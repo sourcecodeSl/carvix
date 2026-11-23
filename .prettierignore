@@ -1,9 +1,6 @@
 node_modules
-**/node_modules
-.next
-**/.next
 dist
-**/dist
+.next
 coverage
-**/coverage
 pnpm-lock.yaml
+packages/database/src/generated

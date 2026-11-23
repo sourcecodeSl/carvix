@@ -1,30 +1,27 @@
-export function validateEnvironment(): void {
-  const required = ['DATABASE_URL', 'REDIS_URL', 'CORS_ORIGIN'];
-  const missing = required.filter((key) => !process.env[key]?.trim());
+import { z } from 'zod';
 
-  if (missing.length > 0) {
-    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
-  }
+export const environmentSchema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  API_PORT: z.coerce.number().int().min(1).max(65535).default(3001),
+  DATABASE_URL: z.url(),
+  REDIS_URL: z.url(),
+  CORS_ORIGINS: z
+    .string()
+    .default('http://localhost:3000')
+    .transform((value) =>
+      value
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean),
+    ),
+});
 
-  const databaseUrl = process.env.DATABASE_URL ?? '';
-  const redisUrl = process.env.REDIS_URL ?? '';
+export type Environment = z.infer<typeof environmentSchema>;
 
-  if (!databaseUrl.startsWith('postgresql://') && !databaseUrl.startsWith('postgres://')) {
-    throw new Error('DATABASE_URL must point to a PostgreSQL connection string.');
+export function validateEnvironment(config: Record<string, unknown>): Environment {
+  const result = environmentSchema.safeParse(config);
+  if (!result.success) {
+    throw new Error(`Invalid environment configuration: ${z.prettifyError(result.error)}`);
   }
-
-  if (!redisUrl.startsWith('redis://') && !redisUrl.startsWith('rediss://')) {
-    throw new Error('REDIS_URL must point to a Redis connection string.');
-  }
-
-  const mfaKey = process.env.AUTH_MFA_ENCRYPTION_KEY;
-  if (process.env.NODE_ENV === 'production' && !mfaKey) {
-    throw new Error('AUTH_MFA_ENCRYPTION_KEY is required in production.');
-  }
-  if (mfaKey) {
-    const decodedKey = Buffer.from(mfaKey, 'base64');
-    if (decodedKey.length !== 32 || decodedKey.toString('base64') !== mfaKey) {
-      throw new Error('AUTH_MFA_ENCRYPTION_KEY must be a canonical base64-encoded 32-byte key.');
-    }
-  }
+  return result.data;
 }

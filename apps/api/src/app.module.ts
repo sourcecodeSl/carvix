@@ -1,28 +1,19 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import appConfig from './config/app.config.js';
-import { PrismaModule } from './prisma/prisma.module.js';
-import { TenancyModule } from './modules/tenancy/tenancy.module.js';
-import { HealthModule } from './modules/health/health.module.js';
-import { AuthModule } from './modules/auth/auth.module.js';
-import { DealersModule } from './modules/dealers/dealers.module.js';
-import { BranchesModule } from './modules/branches/branches.module.js';
-import { UsersModule } from './modules/users/users.module.js';
+import { validateEnvironment } from './config/env.validation';
+import { PrismaService } from './database/prisma.service';
+import { HealthController } from './health/health.controller';
+import { ReadinessService } from './health/readiness.service';
+import { redisProvider } from './redis/redis.provider';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig],
-      envFilePath: ['.env', '.env.local'],
+      validate: validateEnvironment,
     }),
-    PrismaModule,
-    TenancyModule,
-    HealthModule,
-    AuthModule,
-    DealersModule,
-    BranchesModule,
-    UsersModule,
   ],
+  controllers: [HealthController],
+  providers: [PrismaService, ReadinessService, redisProvider],
 })
 export class AppModule {}

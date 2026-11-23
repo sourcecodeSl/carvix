@@ -1,16 +1,14 @@
-import './globals.css';
 import type { Metadata } from 'next';
-import type { ReactNode } from 'react';
+import './globals.css';
 
 export const metadata: Metadata = {
   title: 'AI Car Sales CRM',
-  description: 'Development foundation for the AI Car Sales Assistant & CRM Platform.',
-  referrer: 'no-referrer',
+  description: 'Multi-Tenant Automotive Sales Operations Platform',
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <body>{children}</body>
     </html>
   );

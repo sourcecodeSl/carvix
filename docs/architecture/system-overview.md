@@ -1,9 +1,5 @@
 # System overview
 
-The platform is split into three runtime layers:
+The initial deployment is a modular monolith: one Next.js frontend and one NestJS backend share a monorepo but remain independently deployable. PostgreSQL is the authoritative internal database. Redis is infrastructure for connectivity and future caching or queues.
 
-1. Web application: Next.js app router front-end for dealership operations and development status monitoring.
-2. API layer: NestJS modular monolith exposing versioned APIs to the web application and future service adapters.
-3. Data and infrastructure services: PostgreSQL for SaaS metadata and Redis for operational caching and orchestration support.
-
-The architecture keeps dealership inventory access outside the application core and enforces isolation through backend authorization boundaries.
+External dealership inventory remains MySQL-only. A dedicated package defines read-only contracts and normalized vehicle fields; no connection or synchronization implementation exists on Day 1.

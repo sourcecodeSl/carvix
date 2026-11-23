@@ -1,45 +1,12 @@
-# Dependencies
-node_modules
-**/node_modules
-.pnpm-store
-
-# Build outputs
-.next
-out
-coverage
-**/dist
-**/.next
-**/coverage
-
-# Environment files
+node_modules/
+.pnpm-store/
+.next/
+dist/
+coverage/
+*.tsbuildinfo
 .env
 .env.*
 !.env.example
-
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# IDE/editor
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.local
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Prisma
-**/prisma/dev.db
-**/prisma/dev.db-journal
-
-# Temporary files
-.tmp
+apps/*/.env
+apps/*/.env.*
+!apps/*/.env.example

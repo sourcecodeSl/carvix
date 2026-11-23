@@ -1,30 +1,30 @@
 {
-  "name": "@ai-car-sales-crm/web",
-  "private": true,
+  "name": "@aicrm/web",
   "version": "0.1.0",
+  "private": true,
   "scripts": {
-    "dev": "next dev --hostname 0.0.0.0 --port 3000",
+    "dev": "next dev --hostname 127.0.0.1",
     "build": "next build",
-    "start": "next start --hostname 0.0.0.0 --port 3000",
-    "lint": "oxlint . --tsconfig tsconfig.json",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@ai-car-sales-crm/shared-types": "workspace:*",
-    "next": "15.3.5",
-    "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "@aicrm/shared": "workspace:*",
+    "lucide-react": "1.77.0",
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.1",
-    "@testing-library/react": "^16.0.1",
-    "@types/node": "^24.19.2",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "jsdom": "^26.0.0",
-    "oxlint": "^1.90.0",
-    "typescript": "^5.9.0",
-    "vitest": "^3.2.0"
+    "@tailwindcss/postcss": "4.3.5",
+    "@types/node": "24.10.13",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.4.6",
+    "tailwindcss": "4.3.5",
+    "typescript": "5.9.3",
+    "vitest": "5.1.1"
   }
 }

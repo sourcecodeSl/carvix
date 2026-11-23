@@ -1,42 +1,43 @@
 import 'reflect-metadata';
-
-import { ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AppModule } from './app.module.js';
-import { validateEnvironment } from './config/env.validation.js';
+import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
-  validateEnvironment();
-  const app = await NestFactory.create(AppModule, {
-    logger: ['error', 'warn', 'log', 'debug', 'verbose'],
-  });
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const logger = new Logger('Bootstrap');
+  app.useLogger(logger);
 
-  const configService = app.get(ConfigService);
-  const port = Number(configService.get<number>('app.port') ?? 4000);
-  const corsOrigins = (configService.get<string[]>('app.corsOrigin') ?? ['http://localhost:3000']).map(
-    (origin) => origin.trim(),
-  );
-
-  app.setGlobalPrefix('/api/v1');
-  app.enableCors({
-    origin: corsOrigins,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Dealership-Id'],
-  });
+  const config = app.get(ConfigService);
+  app.setGlobalPrefix('api');
+  app.enableVersioning();
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-      transformOptions: { enableImplicitConversion: true },
     }),
   );
-  app.enableShutdownHooks();
 
+  const origins = config.getOrThrow<string[]>('CORS_ORIGINS');
+  app.enableCors({ origin: origins, credentials: true });
+
+  if (config.getOrThrow<string>('NODE_ENV') !== 'production') {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('AI Car Sales CRM API')
+      .setDescription('Day 1 development API')
+      .setVersion('1.0')
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('docs', app, document);
+  }
+
+  app.enableShutdownHooks();
+  const port = config.getOrThrow<number>('API_PORT');
   await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}`);
+  logger.log(`API listening on http://127.0.0.1:${port}`);
 }
 
 void bootstrap();

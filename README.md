@@ -1,55 +1,83 @@
-# Northstar Dealer CRM
+# AI Car Sales Assistant & CRM
 
-A monorepo for the AI Car Sales Assistant & Customer Relationship Management platform, built with Next.js, NestJS, PostgreSQL, Redis, Prisma, and pnpm workspaces.
+This repository is a Day 1 foundation for a multi-tenant automotive sales operations and CRM platform.
 
-## Local startup
+## Technology stack
 
-```bash
+- Next.js 16 and React 19 frontend
+- NestJS 12 and TypeScript backend
+- PostgreSQL 18 with Prisma 7
+- Redis 8
+- pnpm workspaces and Turborepo
+- Docker Compose
+- Vitest
+
+## Workspace structure
+
+- `apps/web`: Next.js App Router frontend
+- `apps/api`: NestJS REST API
+- `packages/database`: Prisma schema and PostgreSQL client
+- `packages/shared`: shared API contracts
+- `packages/inventory-mysql`: MySQL inventory integration contracts
+- `docs/`: architecture, development, and decision records
+
+## Prerequisites
+
+- Node.js 24 or compatible supported runtime
+- pnpm 11
+- Docker Desktop or Docker Engine for local infrastructure
+- Git
+
+## Setup
+
+```powershell
 pnpm install
-pnpm infra:up
+Copy-Item .env.example .env
+docker compose up -d postgres redis
 pnpm db:generate
 pnpm db:migrate
 pnpm dev
 ```
 
-The project uses Docker Compose for local PostgreSQL and Redis infrastructure. PostgreSQL is bound to `127.0.0.1:55432` to avoid the existing Windows service conflict on port 5432.
+Use `.env.example` only as safe development configuration. Never commit real secrets.
 
-## Authentication foundation
+## Local URLs
 
-The Day 4 authentication implementation provides local password sign-in, session cookies, email verification/password reset, TOTP MFA, and dealership-scoped staff APIs. Public registration and initial administrator bootstrap are intentionally disabled. Verification, reset, and invitation emails are not delivered; the development-only sink logs only a not-delivered warning (never the token link) and captures links in memory during tests, while production email operations fail closed.
+- Frontend: http://127.0.0.1:3000
+- Backend: http://127.0.0.1:3001
+- Health: http://127.0.0.1:3001/api/v1/health
+- Readiness: http://127.0.0.1:3001/api/v1/health/ready
+- Swagger: http://127.0.0.1:3001/docs
 
-Configure `AUTH_MFA_ENCRYPTION_KEY` in the local API `.env` before exercising MFA. Use a randomly generated, base64-encoded 32-byte key; never put the actual key in source control. Production use remains blocked pending an approved identity/onboarding policy, real email provider, role/permission provisioning, MFA recovery process, and approval/reconciliation of the supplied draft SRS and SAD. Day 5 dealership administration coverage and unresolved requirements are recorded in the [Day 5 report](docs/planning/day-05-report.md) and [requirement matrix](docs/requirements/requirement-matrix.md). See [authentication and RBAC](docs/architecture/authentication-and-rbac.md), [session management](docs/architecture/session-management.md), and the [authentication API contract](docs/api/authentication.md).
-
-## Local infrastructure
-
-- PostgreSQL: `127.0.0.1:55432` -> container `5432`
-- Redis: `127.0.0.1:6379` -> container `6379`
-- API: `http://localhost:4000/api/v1`
-- Web app: `http://localhost:3000`
-
-## Health checks
-
-- Backend health endpoint: `GET http://localhost:4000/api/v1/health`
-- Expected result: `status: "ok"` when PostgreSQL and Redis are reachable.
-
-## Database validation
-
-- Database model and relationship notes: [database schema](docs/architecture/database-schema.md) and [database relationships](docs/architecture/database-relationships.md).
-- Tenant boundary rules: [tenant isolation](docs/architecture/tenant-isolation.md).
-- PostgreSQL integration tests use synthetic records and are disabled by default. With local PostgreSQL running and `apps/api/.env` configured, enable them in PowerShell with:
+## Common commands
 
 ```powershell
-$env:RUN_DB_INTEGRATION_TESTS = '1'
-pnpm --dir apps/api test:integration
-Remove-Item Env:\RUN_DB_INTEGRATION_TESTS
+pnpm dev
+pnpm build
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm format
+pnpm format:check
+pnpm db:generate
+pnpm db:migrate
+pnpm db:validate
+docker compose logs --tail=100 postgres redis
+docker compose down
 ```
 
-## Available scripts
+## API
 
-- `pnpm dev` — start the API and web frontend together.
-- `pnpm build` — type-check and build all packages.
-- `pnpm lint` — run lint checks across the workspace.
-- `pnpm test` — run project tests.
-- `pnpm infra:up` — start PostgreSQL and Redis via Docker Compose.
-- `pnpm db:generate` — generate the Prisma client.
-- `pnpm db:migrate` — apply Prisma migrations to the local database.
+`GET /api/v1/health` is a liveness check and does not verify dependencies.
+
+`GET /api/v1/health/ready` verifies PostgreSQL and Redis. It returns HTTP 503 when either dependency is unavailable.
+
+## Day 1 status
+
+Day 1 implemented the monorepo, frontend foundation, NestJS API, Prisma tenant/user schema, Redis readiness support, MySQL inventory contracts, Docker configuration, tests, CI configuration, and architecture documentation.
+
+Docker migration and live readiness success require Docker infrastructure. Authentication, CRM, inventory synchronization, workers, AI, and WhatsApp are intentionally deferred.
+
+## Next milestone
+
+Day 2 must add authentication and authorization only after tenant resolution, session, password, audit, and RLS designs are reviewed.

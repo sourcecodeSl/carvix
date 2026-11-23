@@ -1,38 +1,35 @@
-
 services:
   postgres:
-    image: postgres:16-alpine
-    container_name: ai-car-sales-crm-postgres
+    image: postgres:18.1-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ai_car_sales_crm
-      POSTGRES_USER: crm_app
-      POSTGRES_PASSWORD: crm_password
+      POSTGRES_DB: aicrm
+      POSTGRES_USER: aicrm
+      POSTGRES_PASSWORD: aicrm_dev_password
     ports:
-      - '127.0.0.1:55432:5432'
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U crm_app -d ai_car_sales_crm']
-      interval: 10s
+      test: ['CMD-SHELL', 'pg_isready -U aicrm -d aicrm']
+      interval: 5s
       timeout: 5s
-      retries: 5
-      start_period: 10s
+      retries: 20
 
   redis:
-    image: redis:7-alpine
-    container_name: ai-car-sales-crm-redis
+    image: redis:8.4.0-alpine
     restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
     ports:
-      - '127.0.0.1:6379:6379'
-    command: ['redis-server', '--appendonly', 'no', '--save', '']
+      - '127.0.0.1:${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis-data:/data
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
-      start_period: 5s
+      retries: 20
 
 volumes:
-  postgres_data:
-    driver: local
+  postgres-data:
+  redis-data:
