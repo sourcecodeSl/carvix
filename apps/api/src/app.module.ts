@@ -20,6 +20,20 @@ import { DealershipService } from './modules/dealerships/dealership.service';
 import { DealershipRepository } from './modules/dealerships/dealership.repository';
 import { BranchController } from './modules/branches/branch.controller';
 import { BranchService } from './modules/branches/branch.service';
+import { StaffController } from './modules/staff/staff.controller';
+import {
+  PublicInvitationController,
+  StaffInvitationController,
+} from './modules/staff/staff-invitation.controller';
+import { StaffRepository } from './modules/staff/staff.repository';
+import { StaffService } from './modules/staff/staff.service';
+import { StaffInvitationRepository } from './modules/staff/staff-invitation.repository';
+import { StaffInvitationService } from './modules/staff/staff-invitation.service';
+import { StaffInvitationRateLimitService } from './modules/staff/staff-invitation-rate-limit.service';
+import {
+  DevelopmentPreviewInvitationDelivery,
+  STAFF_INVITATION_DELIVERY,
+} from './modules/staff/staff-invitation-delivery';
 
 @Module({
   imports: [
@@ -28,7 +42,15 @@ import { BranchService } from './modules/branches/branch.service';
       validate: validateEnvironment,
     }),
   ],
-  controllers: [HealthController, AuthController, DealershipController, BranchController],
+  controllers: [
+    HealthController,
+    AuthController,
+    DealershipController,
+    BranchController,
+    StaffController,
+    StaffInvitationController,
+    PublicInvitationController,
+  ],
   providers: [
     PrismaService,
     AuthPrismaService,
@@ -36,6 +58,15 @@ import { BranchService } from './modules/branches/branch.service';
     redisProvider,
     BranchRepository,
     BranchService,
+    StaffRepository,
+    StaffService,
+    StaffInvitationRepository,
+    StaffInvitationService,
+    StaffInvitationRateLimitService,
+    {
+      provide: STAFF_INVITATION_DELIVERY,
+      useClass: DevelopmentPreviewInvitationDelivery,
+    },
     DealershipRepository,
     DealershipService,
     TenantMembershipRepository,

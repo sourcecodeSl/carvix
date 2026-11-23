@@ -86,6 +86,20 @@ Employee invitations, CRM leads, AI, inventory synchronization, workers, WhatsAp
 
 The API and UI use the existing dealership and branch schema. Endpoints, permission rules, RLS transaction behavior, and the explicit development bootstrap are documented in [dealership and branch management](docs/development/dealership-branch-management.md).
 
+## Staff and invitation management
+
+Day 5 adds tenant-scoped staff roles, suspended memberships, branch assignments, and invitation lifecycle management.
+
+- Dealer Administrators can invite Sales Managers and Sales Agents, change non-self staff roles/status, assign active branches, and cancel pending invitations.
+- Sales Managers have read-only staff visibility and do not receive invitation or staff-update permissions.
+- Sales Agents cannot access the staff directory.
+- Branch reads are assigned-member aware: Sales Manager and Sales Agent users only see branches assigned to their active membership.
+- Invitations are development-only. Creating an invitation returns a local preview URL in the UI/API response, but no email is sent and raw invitation tokens are never stored or included in invitation list responses.
+- Production invitation creation and acceptance remain disabled until a trusted email delivery and verification provider is configured.
+- Existing accounts can accept an invitation only when signed in with the exact invited email. New accounts are created only through the development acceptance flow.
+
+The staff API, RLS model, helper grants, and acceptance security are documented in [staff and invitation management](docs/development/staff-invitation-management.md).
+
 ## Next milestone
 
 The next milestone can build on the verified dealership and branch foundation.

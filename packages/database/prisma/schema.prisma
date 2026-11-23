@@ -39,6 +39,13 @@ enum BranchStatus {
   INACTIVE
 }
 
+enum StaffInvitationStatus {
+  PENDING
+  ACCEPTED
+  CANCELLED
+  EXPIRED
+}
+
 enum PlatformRole {
   SUPER_ADMIN
 }
@@ -59,6 +66,7 @@ model Tenant {
   dealership Dealership?
   branches Branch[]
   memberships TenantMembership[]
+  staffInvitations StaffInvitation[]
 
   @@map("tenants")
 }
@@ -145,8 +153,11 @@ model Branch {
   updatedAt    DateTime     @updatedAt @map("updated_at")
   tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   dealership   Dealership   @relation(fields: [dealershipId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  staffAssignments      StaffBranchAssignment[]
+  invitationAssignments StaffInvitationBranch[]
 
   @@unique([dealershipId, code])
+  @@unique([id, tenantId])
   @@index([tenantId])
   @@index([dealershipId])
   @@map("branches")
@@ -162,11 +173,66 @@ model TenantMembership {
   updatedAt DateTime         @updatedAt @map("updated_at")
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  branchAssignments StaffBranchAssignment[]
+  staffInvitations StaffInvitation[] @relation("StaffInvitationInviter")
 
   @@unique([userId, tenantId])
+  @@unique([id, tenantId])
   @@index([tenantId])
   @@index([userId])
   @@map("tenant_memberships")
+}
+
+model StaffInvitation {
+  id                    String                  @id @default(uuid()) @db.Uuid
+  tenantId              String                  @map("tenant_id") @db.Uuid
+  invitedByMembershipId String                  @map("invited_by_membership_id") @db.Uuid
+  email                 String
+  role                  MembershipRole
+  tokenHash             String                  @unique @map("token_hash") @db.Char(64)
+  status                StaffInvitationStatus   @default(PENDING)
+  expiresAt             DateTime                @map("expires_at")
+  acceptedAt            DateTime?               @map("accepted_at")
+  cancelledAt           DateTime?               @map("cancelled_at")
+  createdAt             DateTime                @default(now()) @map("created_at")
+  updatedAt             DateTime                @updatedAt @map("updated_at")
+  tenant                Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  invitedBy             TenantMembership        @relation("StaffInvitationInviter", fields: [invitedByMembershipId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  branches              StaffInvitationBranch[]
+
+  @@unique([id, tenantId])
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, email, status])
+  @@map("staff_invitations")
+}
+
+model StaffInvitationBranch {
+  id           String          @id @default(uuid()) @db.Uuid
+  tenantId     String          @map("tenant_id") @db.Uuid
+  invitationId String          @map("invitation_id") @db.Uuid
+  branchId     String          @map("branch_id") @db.Uuid
+  createdAt    DateTime        @default(now()) @map("created_at")
+  invitation   StaffInvitation @relation(fields: [invitationId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  branch       Branch          @relation(fields: [branchId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
+  @@unique([invitationId, branchId])
+  @@index([tenantId, branchId])
+  @@map("staff_invitation_branches")
+}
+
+model StaffBranchAssignment {
+  id           String           @id @default(uuid()) @db.Uuid
+  tenantId     String           @map("tenant_id") @db.Uuid
+  membershipId String           @map("membership_id") @db.Uuid
+  branchId     String           @map("branch_id") @db.Uuid
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+  membership   TenantMembership @relation(fields: [membershipId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  branch       Branch           @relation(fields: [branchId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
+  @@unique([membershipId, branchId])
+  @@index([tenantId, branchId])
+  @@map("staff_branch_assignments")
 }
 
 model PlatformAdministrator {

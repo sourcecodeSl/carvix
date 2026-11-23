@@ -125,6 +125,61 @@ export type BranchResponse = {
   updatedAt: string;
 };
 
+export type StaffMemberResponse = {
+  id: string;
+  userId: string;
+  name: string;
+  email?: string;
+  userStatus: 'INVITED' | 'ACTIVE' | 'DISABLED' | 'DELETED';
+  role: MembershipRole;
+  status: 'INVITED' | 'ACTIVE' | 'SUSPENDED';
+  branches: readonly {
+    id: string;
+    name: string;
+    code: string;
+    status: BranchStatus;
+  }[];
+  createdAt: string;
+};
+
+export type StaffDirectoryResponse = {
+  items: readonly StaffMemberResponse[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type StaffInvitationResponse = {
+  id: string;
+  email: string;
+  role: MembershipRole;
+  status: 'PENDING' | 'ACCEPTED' | 'CANCELLED' | 'EXPIRED';
+  branches: readonly {
+    id: string;
+    name: string;
+    code: string;
+  }[];
+  expiresAt: string;
+  createdAt: string;
+};
+
+export type CreateStaffInvitationResponse = {
+  invitation: StaffInvitationResponse;
+  previewUrl: string;
+};
+
+export type StaffInvitationPreviewResponse = {
+  email: string;
+  role: MembershipRole;
+  tenantName: string;
+  branches: readonly {
+    id: string;
+    name: string;
+    code: string;
+  }[];
+  expiresAt: string;
+};
+
 export type BackgroundJobContext = {
   kind: 'background_job';
   tenantId: string;

@@ -11,15 +11,22 @@ import {
   LogOut,
   MapPinned,
   Store,
+  UsersRound,
 } from 'lucide-react';
-import type { AuthenticatedUserResponse } from '@aicrm/shared';
+import { Permission, type AuthenticatedUserResponse } from '@aicrm/shared';
 import { getCurrentUser, logout, selectActiveTenant } from '../../lib/auth';
 import { DashboardSessionProvider } from '../../components/dashboard-session';
 
 const primaryNavigation = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/dashboard/dealership', label: 'Dealership', icon: Store },
-  { href: '/dashboard/branches', label: 'Branches', icon: MapPinned },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: null },
+  { href: '/dashboard/dealership', label: 'Dealership', icon: Store, permission: null },
+  { href: '/dashboard/branches', label: 'Branches', icon: MapPinned, permission: null },
+  {
+    href: '/dashboard/staff',
+    label: 'Staff',
+    icon: UsersRound,
+    permission: Permission.USER_READ,
+  },
 ] as const;
 
 const upcomingNavigation = [
@@ -198,25 +205,27 @@ export default function DashboardLayout({ children }: Readonly<{ children: React
             aria-label="Main navigation"
             className="flex gap-1 overflow-x-auto px-3 pb-3 lg:block lg:flex-1"
           >
-            {primaryNavigation.map(({ href, label, icon: Icon }) => {
-              const active =
-                pathname === href || (href !== '/dashboard' && pathname.startsWith(`${href}/`));
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  aria-current={active ? 'page' : undefined}
-                  className={`flex shrink-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                    active
-                      ? 'bg-blue-50 text-blue-800'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
-                  }`}
-                >
-                  <Icon size={17} aria-hidden="true" />
-                  {label}
-                </Link>
-              );
-            })}
+            {primaryNavigation
+              .filter(({ permission }) => !permission || user.permissions.includes(permission))
+              .map(({ href, label, icon: Icon }) => {
+                const active =
+                  pathname === href || (href !== '/dashboard' && pathname.startsWith(`${href}/`));
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    aria-current={active ? 'page' : undefined}
+                    className={`flex shrink-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                      active
+                        ? 'bg-blue-50 text-blue-800'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
+                    }`}
+                  >
+                    <Icon size={17} aria-hidden="true" />
+                    {label}
+                  </Link>
+                );
+              })}
             <p className="px-3 pb-2 pt-5 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
               Coming soon
             </p>

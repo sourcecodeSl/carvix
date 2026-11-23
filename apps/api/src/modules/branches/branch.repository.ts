@@ -36,7 +36,13 @@ export class BranchRepository {
       });
       if (!dealership) return null;
       return transaction.branch.findMany({
-        where: { dealershipId, tenantId: trusted.tenantId },
+        where: {
+          dealershipId,
+          tenantId: trusted.tenantId,
+          ...(!trusted.permissions.includes(Permission.BRANCH_UPDATE)
+            ? { staffAssignments: { some: { membershipId: trusted.membershipId } } }
+            : {}),
+        },
         orderBy: [{ name: 'asc' }, { code: 'asc' }, { id: 'asc' }],
         select: branchSelect,
       });
@@ -52,7 +58,14 @@ export class BranchRepository {
     return this.prisma.$transaction(async (transaction) => {
       await scopeTenantTransaction(transaction, trusted);
       return transaction.branch.findFirst({
-        where: { id: branchId, dealershipId, tenantId: trusted.tenantId },
+        where: {
+          id: branchId,
+          dealershipId,
+          tenantId: trusted.tenantId,
+          ...(!trusted.permissions.includes(Permission.BRANCH_UPDATE)
+            ? { staffAssignments: { some: { membershipId: trusted.membershipId } } }
+            : {}),
+        },
         select: branchSelect,
       });
     });

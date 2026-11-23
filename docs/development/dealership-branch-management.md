@@ -1,5 +1,7 @@
 # Dealership and branch management
 
+Staff branch visibility is extended by Day 5: Sales Managers and Sales Agents only receive branch rows assigned to their active tenant membership. Dealer Administrators retain tenant-wide branch management permissions.
+
 Day 4 uses the existing `dealerships` and `branches` tables. No schema migration is required:
 
 - Each tenant has at most one dealership.

@@ -2,7 +2,10 @@ import type {
   AuthenticatedUserResponse,
   BranchResponse,
   BranchStatus,
+  CreateStaffInvitationResponse,
   DealershipResponse,
+  StaffDirectoryResponse,
+  StaffInvitationPreviewResponse,
 } from '@aicrm/shared';
 
 export const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:3001';
@@ -138,6 +141,98 @@ export function updateBranchStatus(
       body: JSON.stringify({ status }),
     },
   );
+}
+
+export function getStaff(filters: {
+  page: number;
+  pageSize: number;
+  q?: string;
+  role?: 'SALES_MANAGER' | 'SALES_AGENT';
+  status?: 'ACTIVE' | 'SUSPENDED';
+}): Promise<StaffDirectoryResponse> {
+  const query = new URLSearchParams({
+    page: String(filters.page),
+    pageSize: String(filters.pageSize),
+  });
+  if (filters.q) query.set('q', filters.q);
+  if (filters.role) query.set('role', filters.role);
+  if (filters.status) query.set('status', filters.status);
+  return requestApi(`/api/v1/staff?${query.toString()}`);
+}
+
+export function updateStaffRole(membershipId: string, role: 'SALES_MANAGER' | 'SALES_AGENT') {
+  return requestApi(`/api/v1/staff/members/${encodeURIComponent(membershipId)}/role`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role }),
+  });
+}
+
+export function updateStaffStatus(membershipId: string, status: 'ACTIVE' | 'SUSPENDED') {
+  return requestApi(`/api/v1/staff/members/${encodeURIComponent(membershipId)}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+export function updateStaffBranches(membershipId: string, branchIds: readonly string[]) {
+  return requestApi(`/api/v1/staff/members/${encodeURIComponent(membershipId)}/branches`, {
+    method: 'PUT',
+    body: JSON.stringify({ branchIds }),
+  });
+}
+
+export function getStaffInvitations(page = 1, pageSize = 20) {
+  const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  return requestApi<{
+    items: import('@aicrm/shared').StaffInvitationResponse[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }>(`/api/v1/staff/invitations?${query.toString()}`);
+}
+
+export function createStaffInvitation(values: {
+  email: string;
+  role: 'SALES_MANAGER' | 'SALES_AGENT';
+  branchIds: readonly string[];
+}): Promise<CreateStaffInvitationResponse> {
+  return requestApi('/api/v1/staff/invitations', {
+    method: 'POST',
+    body: JSON.stringify(values),
+  });
+}
+
+export function cancelStaffInvitation(invitationId: string) {
+  return requestApi(`/api/v1/staff/invitations/${encodeURIComponent(invitationId)}/cancel`, {
+    method: 'PATCH',
+  });
+}
+
+export function validateStaffInvitation(token: string): Promise<StaffInvitationPreviewResponse> {
+  return requestApi('/api/v1/invitations/validate', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+}
+
+export function acceptStaffInvitation(
+  token: string,
+): Promise<{ status: 'accepted'; tenantId: string }> {
+  return requestApi('/api/v1/invitations/accept', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+}
+
+export function acceptNewStaffInvitation(values: {
+  token: string;
+  name: string;
+  password: string;
+}): Promise<{ status: 'accepted'; tenantId: string }> {
+  return requestApi('/api/v1/invitations/accept-new', {
+    method: 'POST',
+    body: JSON.stringify(values),
+  });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

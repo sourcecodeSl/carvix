@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, Building2, MapPinned, Store } from 'lucide-react';
+import { ArrowRight, Building2, MapPinned, Store, UsersRound } from 'lucide-react';
+import { Permission } from '@aicrm/shared';
 import { ApiRequestError, getBranches, getDealerships } from '../../lib/auth';
 import type { BranchResponse, DealershipResponse } from '@aicrm/shared';
 import { useDashboardSession } from '../../components/dashboard-session';
@@ -136,6 +137,14 @@ export default function DashboardPage() {
           title="Branch management"
           description="View locations and manage branches when your role permits."
         />
+        {user.permissions.includes(Permission.USER_READ) && (
+          <QuickLink
+            href="/dashboard/staff"
+            title="Staff"
+            description="Review tenant staff, branch access, and development invitation status."
+            icon={<UsersRound size={17} aria-hidden="true" />}
+          />
+        )}
       </section>
     </div>
   );
@@ -172,10 +181,12 @@ function QuickLink({
   href,
   title,
   description,
+  icon = <ArrowRight size={17} aria-hidden="true" />,
 }: {
   href: string;
   title: string;
   description: string;
+  icon?: React.ReactNode;
 }) {
   return (
     <Link
@@ -184,11 +195,7 @@ function QuickLink({
     >
       <span className="flex items-center justify-between">
         <span className="font-semibold text-slate-950">{title}</span>
-        <ArrowRight
-          size={17}
-          aria-hidden="true"
-          className="text-slate-400 group-hover:text-blue-700"
-        />
+        <span className="text-slate-400 group-hover:text-blue-700">{icon}</span>
       </span>
       <span className="mt-2 block text-sm leading-6 text-slate-600">{description}</span>
     </Link>

@@ -148,6 +148,18 @@ describe.skipIf(!enabled)('dealership and branch management HTTP integration', (
       },
       select: { id: true },
     });
+    const assignedMemberships = await owner.tenantMembership.findMany({
+      where: { tenantId: tenantA.id, userId: { in: [manager.id, agent.id] } },
+      select: { id: true },
+    });
+    await owner.staffBranchAssignment.createMany({
+      data: assignedMemberships.map((membership) => ({
+        tenantId: tenantA!.id,
+        membershipId: membership.id,
+        branchId: branchA!.id,
+        updatedAt: new Date(),
+      })),
+    });
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     moduleRef.get(ConfigService).set('LOGIN_LIMIT_PER_MINUTE', 100);
@@ -180,6 +192,9 @@ describe.skipIf(!enabled)('dealership and branch management HTTP integration', (
       await owner.$transaction(async (transaction) => {
         await transaction.authSession.deleteMany({
           where: { userId: { in: userIds } },
+        });
+        await transaction.staffBranchAssignment.deleteMany({
+          where: { tenantId: { in: tenantIds } },
         });
         await transaction.branch.deleteMany({
           where: { dealershipId: { in: dealershipIds } },
