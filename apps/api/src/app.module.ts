@@ -5,6 +5,8 @@ import { PrismaService } from './database/prisma.service';
 import { HealthController } from './health/health.controller';
 import { ReadinessService } from './health/readiness.service';
 import { redisProvider } from './redis/redis.provider';
+import { BranchRepository } from './modules/branches/branch.repository';
+import { TenantMembershipRepository } from './modules/memberships/tenant-membership.repository';
 
 @Module({
   imports: [
@@ -14,6 +16,12 @@ import { redisProvider } from './redis/redis.provider';
     }),
   ],
   controllers: [HealthController],
-  providers: [PrismaService, ReadinessService, redisProvider],
+  providers: [
+    PrismaService,
+    ReadinessService,
+    redisProvider,
+    BranchRepository,
+    TenantMembershipRepository,
+  ],
 })
 export class AppModule {}

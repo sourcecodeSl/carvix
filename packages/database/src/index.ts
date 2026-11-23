@@ -1,2 +1,2 @@
 export { PrismaPg } from '@prisma/adapter-pg';
-export { PrismaClient } from './generated/client.js';
+export { Prisma, PrismaClient } from './generated/client.js';

@@ -8,8 +8,10 @@ datasource db {
 }
 
 enum TenantStatus {
+  PENDING
   ACTIVE
   SUSPENDED
+  INACTIVE
   DELETED
 }
 
@@ -20,6 +22,32 @@ enum UserStatus {
   DELETED
 }
 
+enum MembershipStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+}
+
+enum MembershipRole {
+  DEALER_ADMIN
+  SALES_MANAGER
+  SALES_AGENT
+}
+
+enum BranchStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum PlatformRole {
+  SUPER_ADMIN
+}
+
+enum PlatformAdministratorStatus {
+  ACTIVE
+  SUSPENDED
+}
+
 model Tenant {
   id        String       @id @default(uuid()) @db.Uuid
   name      String
@@ -28,6 +56,9 @@ model Tenant {
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
   users     User[]
+  dealership Dealership?
+  branches Branch[]
+  memberships TenantMembership[]
 
   @@map("tenants")
 }
@@ -41,9 +72,81 @@ model User {
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")
   tenant    Tenant?    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  memberships TenantMembership[]
+  platformAdministrator PlatformAdministrator?
 
   @@unique([tenantId, email])
   @@index([tenantId])
   @@index([email])
   @@map("users")
+}
+
+model Dealership {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @unique @map("tenant_id") @db.Uuid
+  businessName String   @map("business_name")
+  contactEmail String   @map("contact_email")
+  contactPhone String?  @map("contact_phone")
+  country      String
+  timezone     String
+  currency     String
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  branches     Branch[]
+
+  @@unique([id, tenantId])
+  @@index([tenantId])
+  @@map("dealerships")
+}
+
+model Branch {
+  id           String       @id @default(uuid()) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  dealershipId String       @map("dealership_id") @db.Uuid
+  name         String
+  code         String
+  address      String?
+  city         String?
+  phone        String?
+  status       BranchStatus @default(ACTIVE)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  dealership   Dealership   @relation(fields: [dealershipId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
+  @@unique([dealershipId, code])
+  @@index([tenantId])
+  @@index([dealershipId])
+  @@map("branches")
+}
+
+model TenantMembership {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  tenantId  String           @map("tenant_id") @db.Uuid
+  role      MembershipRole
+  status    MembershipStatus @default(INVITED)
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, tenantId])
+  @@index([tenantId])
+  @@index([userId])
+  @@map("tenant_memberships")
+}
+
+model PlatformAdministrator {
+  id        String                      @id @default(uuid()) @db.Uuid
+  userId    String                      @unique @map("user_id") @db.Uuid
+  role      PlatformRole                @default(SUPER_ADMIN)
+  status    PlatformAdministratorStatus @default(ACTIVE)
+  createdAt DateTime                    @default(now()) @map("created_at")
+  updatedAt DateTime                    @updatedAt @map("updated_at")
+  user      User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("platform_administrators")
 }

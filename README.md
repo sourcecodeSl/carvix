@@ -78,6 +78,12 @@ Day 1 implemented the monorepo, frontend foundation, NestJS API, Prisma tenant/u
 
 Docker migration and live readiness success require Docker infrastructure. Authentication, CRM, inventory synchronization, workers, AI, and WhatsApp are intentionally deferred.
 
+## Day 2 status
+
+Day 2 added the dealership, branch, tenant membership, platform administrator, and explicit role/permission foundation. It also added PostgreSQL RLS policies for dealership, branch, and membership records.
+
+Day 2 does not implement login, JWTs, sessions, invitations, CRM, AI, or public protected management endpoints.
+
 ## Next milestone
 
 Day 2 must add authentication and authorization only after tenant resolution, session, password, audit, and RLS designs are reviewed.
