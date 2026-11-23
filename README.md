@@ -32,14 +32,16 @@ This repository is a Day 1 foundation for a multi-tenant automotive sales operat
 
 ```powershell
 pnpm install
-Copy-Item .env.example .env
-docker compose up -d postgres redis
+node infrastructure/postgres/create-local-config.mjs
+docker compose --env-file .env.day3 --project-name aicrm-day3-clean up -d postgres redis
 pnpm db:generate
-pnpm db:migrate
+pnpm --filter @aicrm/database exec prisma migrate deploy --config prisma.config.ts
 pnpm dev
 ```
 
-Use `.env.example` only as safe development configuration. Never commit real secrets.
+The config generator creates ignored local files with random credentials. The API receives only runtime database URLs; Prisma and the explicit development-user provisioning command use the separate migration URL. Never commit local environment files or secrets.
+
+See [local setup](docs/development/local-setup.md) for database configuration and [Day 3 database archive and recovery](docs/development/day3-database-archive.md) for the preserved legacy database and backup.
 
 ## Local URLs
 
@@ -60,11 +62,13 @@ pnpm test
 pnpm format
 pnpm format:check
 pnpm db:generate
-pnpm db:migrate
 pnpm db:validate
-docker compose logs --tail=100 postgres redis
-docker compose down
+pnpm --filter @aicrm/database exec prisma migrate deploy --config prisma.config.ts
+docker compose --env-file .env.day3 --project-name aicrm-day3-clean logs --tail=100 postgres redis
+docker compose --env-file .env.day3 --project-name aicrm-day3-clean down
 ```
+
+Use `prisma migrate dev` only when intentionally authoring a new migration. Never edit an applied migration; create an additive migration for corrections.
 
 ## API
 
@@ -72,18 +76,12 @@ docker compose down
 
 `GET /api/v1/health/ready` verifies PostgreSQL and Redis. It returns HTTP 503 when either dependency is unavailable.
 
-## Day 1 status
+## Project foundation status
 
-Day 1 implemented the monorepo, frontend foundation, NestJS API, Prisma tenant/user schema, Redis readiness support, MySQL inventory contracts, Docker configuration, tests, CI configuration, and architecture documentation.
+The project includes the monorepo, frontend foundation, NestJS API, Prisma database configuration, Redis readiness support, MySQL inventory contracts, Docker infrastructure, CI configuration, tenant and dealership models, branch and membership structures, explicit platform administration, centralized permissions, PostgreSQL RLS policies, Argon2id password credentials, opaque server-side sessions, secure authentication cookies, login/logout, tenant selection, and protected frontend routes.
 
-Docker migration and live readiness success require Docker infrastructure. Authentication, CRM, inventory synchronization, workers, AI, and WhatsApp are intentionally deferred.
-
-## Day 2 status
-
-Day 2 added the dealership, branch, tenant membership, platform administrator, and explicit role/permission foundation. It also added PostgreSQL RLS policies for dealership, branch, and membership records.
-
-Day 2 does not implement login, JWTs, sessions, invitations, CRM, AI, or public protected management endpoints.
+Employee invitations, CRM, AI, inventory synchronization, workers, WhatsApp, and public protected management endpoints are intentionally outside the current foundation scope.
 
 ## Next milestone
 
-Day 2 must add authentication and authorization only after tenant resolution, session, password, audit, and RLS designs are reviewed.
+Day 4 development may begin only after Day 3 authentication and tenant authorization results are reviewed.

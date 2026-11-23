@@ -28,6 +28,16 @@ export type Tenant = Prisma.TenantModel
  */
 export type User = Prisma.UserModel
 /**
+ * Model PasswordCredential
+ * 
+ */
+export type PasswordCredential = Prisma.PasswordCredentialModel
+/**
+ * Model AuthSession
+ * 
+ */
+export type AuthSession = Prisma.AuthSessionModel
+/**
  * Model Dealership
  * 
  */

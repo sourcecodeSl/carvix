@@ -11,3 +11,9 @@ coverage/
 apps/*/.env
 apps/*/.env.*
 !apps/*/.env.example
+packages/*/.env
+packages/*/.env.*
+!packages/*/.env.example
+# Database backups
+*.dump
+*.backup

@@ -72,6 +72,27 @@ export type PlatformContext = {
   permissions: readonly Permission[];
 };
 
+export type AuthenticatedUserResponse = {
+  id: string;
+  name: string;
+  email: string;
+  status: 'INVITED' | 'ACTIVE' | 'DISABLED' | 'DELETED';
+  memberships: readonly {
+    id: string;
+    tenantId: string;
+    tenantName: string;
+    role: MembershipRole;
+    status: 'INVITED' | 'ACTIVE' | 'SUSPENDED';
+  }[];
+  activeTenant: null | {
+    tenantId: string;
+    tenantName: string;
+    role: MembershipRole;
+  };
+  platformRole: PlatformRole | null;
+  permissions: readonly Permission[];
+};
+
 export type BackgroundJobContext = {
   kind: 'background_job';
   tenantId: string;

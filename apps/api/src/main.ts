@@ -4,11 +4,14 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import cookieParser from 'cookie-parser';
+import { AUTH_COOKIE_NAME } from './auth/auth.guard';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   const logger = new Logger('Bootstrap');
   app.useLogger(logger);
+  app.use(cookieParser());
 
   const config = app.get(ConfigService);
   app.setGlobalPrefix('api');
@@ -29,6 +32,7 @@ async function bootstrap(): Promise<void> {
       .setTitle('AI Car Sales CRM API')
       .setDescription('Day 1 development API')
       .setVersion('1.0')
+      .addCookieAuth(AUTH_COOKIE_NAME)
       .build();
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     SwaggerModule.setup('docs', app, document);

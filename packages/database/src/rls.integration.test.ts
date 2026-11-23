@@ -3,8 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 type BranchRow = { id: string };
 
-const databaseUrl =
-  process.env.DATABASE_URL ?? 'postgresql://aicrm:aicrm_dev_password@localhost:55432/aicrm';
+const databaseUrl = process.env.DATABASE_URL;
 const integrationEnabled = process.env.RUN_POSTGRES_INTEGRATION === 'true';
 
 describe.skipIf(!integrationEnabled)('PostgreSQL tenant RLS', () => {
@@ -17,6 +16,10 @@ describe.skipIf(!integrationEnabled)('PostgreSQL tenant RLS', () => {
   const branchB = '74222222-2222-4222-8222-222222222222';
 
   it('blocks missing context and enforces cross-tenant reads, updates, and deletes', async () => {
+    if (!databaseUrl) {
+      throw new Error('DATABASE_URL is required when RUN_POSTGRES_INTEGRATION=true');
+    }
+
     await pool.query(
       `
       INSERT INTO tenants (id, name, slug, status, updated_at)
@@ -93,6 +96,10 @@ describe.skipIf(!integrationEnabled)('PostgreSQL tenant RLS', () => {
   });
 
   it('does not leak tenant context across reused connections', async () => {
+    if (!databaseUrl) {
+      throw new Error('DATABASE_URL is required when RUN_POSTGRES_INTEGRATION=true');
+    }
+
     const scoped = await pool.connect();
     try {
       await scoped.query('BEGIN');

@@ -1,0 +1,2 @@
+-- This migration was rolled back after SQL syntax validation failed.
+-- No database objects were created. See 20261123200000_auth_session_write_helpers.

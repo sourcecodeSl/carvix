@@ -5,7 +5,7 @@ import { PrismaPg, PrismaClient } from '@aicrm/database';
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   constructor(config: ConfigService) {
-    const connectionString = config.getOrThrow<string>('DATABASE_URL');
+    const connectionString = config.getOrThrow<string>('DATABASE_APP_URL');
     const adapter = new PrismaPg({ connectionString });
     super({ adapter });
   }
