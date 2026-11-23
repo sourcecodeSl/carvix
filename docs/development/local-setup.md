@@ -41,6 +41,20 @@ Remove-Item Env:DATABASE_MIGRATION_URL
 
 The script requires a hidden password prompt and refuses to run outside development mode. The API server process itself never receives the migration URL.
 
+To create a dealership profile for an existing active tenant that has none, use the explicit, repeatable bootstrap below. It does not create a tenant and leaves an existing dealership unchanged:
+
+```powershell
+pnpm --filter @aicrm/api provision:dealership -- `
+  --tenant <existing-tenant-slug> `
+  --name "Example Dealership" `
+  --email <business-contact-email> `
+  --country "Sri Lanka" `
+  --timezone "Asia/Colombo" `
+  --currency LKR
+```
+
+Add `--phone` if a business phone is available. The bootstrap is development-only and restricted to `aicrm_day3_clean` on port 55433. See [dealership and branch management](dealership-branch-management.md) for endpoints, authorization, and validation rules.
+
 Stop services without deleting their data:
 
 ```powershell

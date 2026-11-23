@@ -15,6 +15,11 @@ import { PermissionsGuard } from './auth/permissions.guard';
 import { CsrfGuard } from './auth/csrf.guard';
 import { LoginRateLimitService } from './auth/login-rate-limit.service';
 import { AuthPrismaService } from './database/auth-prisma.service';
+import { DealershipController } from './modules/dealerships/dealership.controller';
+import { DealershipService } from './modules/dealerships/dealership.service';
+import { DealershipRepository } from './modules/dealerships/dealership.repository';
+import { BranchController } from './modules/branches/branch.controller';
+import { BranchService } from './modules/branches/branch.service';
 
 @Module({
   imports: [
@@ -23,13 +28,16 @@ import { AuthPrismaService } from './database/auth-prisma.service';
       validate: validateEnvironment,
     }),
   ],
-  controllers: [HealthController, AuthController],
+  controllers: [HealthController, AuthController, DealershipController, BranchController],
   providers: [
     PrismaService,
     AuthPrismaService,
     ReadinessService,
     redisProvider,
     BranchRepository,
+    BranchService,
+    DealershipRepository,
+    DealershipService,
     TenantMembershipRepository,
     PasswordService,
     AuthSessionService,

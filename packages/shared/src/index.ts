@@ -51,6 +51,13 @@ export const MembershipRole = {
 
 export type MembershipRole = (typeof MembershipRole)[keyof typeof MembershipRole];
 
+export const BranchStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export type BranchStatus = (typeof BranchStatus)[keyof typeof BranchStatus];
+
 export const PlatformRole = {
   SUPER_ADMIN: 'SUPER_ADMIN',
 } as const;
@@ -91,6 +98,31 @@ export type AuthenticatedUserResponse = {
   };
   platformRole: PlatformRole | null;
   permissions: readonly Permission[];
+};
+
+export type DealershipResponse = {
+  id: string;
+  businessName: string;
+  contactEmail: string;
+  contactPhone: string | null;
+  country: string;
+  timezone: string;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type BranchResponse = {
+  id: string;
+  dealershipId: string;
+  name: string;
+  code: string;
+  address: string | null;
+  city: string | null;
+  phone: string | null;
+  status: BranchStatus;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type BackgroundJobContext = {

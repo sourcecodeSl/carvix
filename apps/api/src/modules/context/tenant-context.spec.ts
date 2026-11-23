@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { TenantContext } from '@aicrm/shared';
-import { assertTenantContext } from './tenant-context';
+import { MembershipRole, Permission, type TenantContext } from '@aicrm/shared';
+import { assertTenantContext, tenantContextFromPrincipal } from './tenant-context';
 
 const validContext: TenantContext = {
   kind: 'tenant',
@@ -23,5 +23,44 @@ describe('TenantContext', () => {
     expect(() => assertTenantContext({ ...validContext, tenantId: 'tenant-a' })).toThrow(
       /invalid identifier/,
     );
+  });
+
+  it('derives tenant scope and permissions from the active verified membership', () => {
+    const context = tenantContextFromPrincipal({
+      userId: validContext.userId,
+      sessionId: '44444444-4444-4444-8444-444444444444',
+      sessionTokenHash: 'hash',
+      activeTenantId: validContext.tenantId,
+      memberships: [
+        {
+          id: validContext.membershipId,
+          tenantId: validContext.tenantId,
+          role: MembershipRole.DEALER_ADMIN,
+        },
+      ],
+      tenantPermissions: [],
+      platformRole: null,
+      platformPermissions: [],
+    });
+
+    expect(context).toEqual({
+      ...validContext,
+      permissions: expect.arrayContaining([Permission.DEALER_UPDATE, Permission.BRANCH_CREATE]),
+    });
+  });
+
+  it('rejects principals without an active authorized membership', () => {
+    const principal = {
+      userId: validContext.userId,
+      sessionId: '44444444-4444-4444-8444-444444444444',
+      sessionTokenHash: 'hash',
+      activeTenantId: validContext.tenantId,
+      memberships: [],
+      tenantPermissions: [],
+      platformRole: null,
+      platformPermissions: [],
+    };
+
+    expect(() => tenantContextFromPrincipal(principal)).toThrow(/active tenant membership/);
   });
 });

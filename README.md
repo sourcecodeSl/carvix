@@ -1,6 +1,6 @@
 # AI Car Sales Assistant & CRM
 
-This repository is a Day 1 foundation for a multi-tenant automotive sales operations and CRM platform.
+This repository provides a foundation for a multi-tenant automotive sales operations and CRM platform.
 
 ## Technology stack
 
@@ -80,8 +80,12 @@ Use `prisma migrate dev` only when intentionally authoring a new migration. Neve
 
 The project includes the monorepo, frontend foundation, NestJS API, Prisma database configuration, Redis readiness support, MySQL inventory contracts, Docker infrastructure, CI configuration, tenant and dealership models, branch and membership structures, explicit platform administration, centralized permissions, PostgreSQL RLS policies, Argon2id password credentials, opaque server-side sessions, secure authentication cookies, login/logout, tenant selection, and protected frontend routes.
 
-Employee invitations, CRM, AI, inventory synchronization, workers, WhatsApp, and public protected management endpoints are intentionally outside the current foundation scope.
+Employee invitations, CRM leads, AI, inventory synchronization, workers, WhatsApp, and deployment infrastructure remain outside the current foundation scope.
+
+## Dealership and branch management
+
+The API and UI use the existing dealership and branch schema. Endpoints, permission rules, RLS transaction behavior, and the explicit development bootstrap are documented in [dealership and branch management](docs/development/dealership-branch-management.md).
 
 ## Next milestone
 
-Day 4 development may begin only after Day 3 authentication and tenant authorization results are reviewed.
+The next milestone can build on the verified dealership and branch foundation.

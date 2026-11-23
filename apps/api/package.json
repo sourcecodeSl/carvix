@@ -8,7 +8,8 @@
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --exclude dist/**",
-    "provision:user": "node --env-file=.env scripts/provision-user.mjs"
+    "provision:user": "node --env-file=.env scripts/provision-user.mjs",
+    "provision:dealership": "node --env-file=.env --env-file=../../packages/database/.env scripts/provision-dealership.mjs"
   },
   "dependencies": {
     "@aicrm/database": "workspace:*",
