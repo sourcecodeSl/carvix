@@ -70,15 +70,25 @@ try {
   });
 
   await prisma.$transaction(async (transaction) => {
+    let tenant = null;
+    if (tenantSlug) {
+      tenant = await transaction.tenant.findUnique({ where: { slug: tenantSlug } });
+      if (!tenant) throw new Error(`Tenant not found: ${tenantSlug}`);
+    }
+
     let user = await transaction.user.findFirst({ where: { email } });
     if (user) {
       user = await transaction.user.update({
         where: { id: user.id },
-        data: { name, status: 'ACTIVE' },
+        data: {
+          name,
+          status: 'ACTIVE',
+          ...(tenant && !user.tenantId ? { tenantId: tenant.id } : {}),
+        },
       });
     } else {
       user = await transaction.user.create({
-        data: { email, name, status: 'ACTIVE' },
+        data: { email, name, status: 'ACTIVE', tenantId: tenant?.id ?? null },
       });
     }
 
@@ -88,9 +98,7 @@ try {
       create: { userId: user.id, passwordHash },
     });
 
-    if (tenantSlug) {
-      const tenant = await transaction.tenant.findUnique({ where: { slug: tenantSlug } });
-      if (!tenant) throw new Error(`Tenant not found: ${tenantSlug}`);
+    if (tenant) {
       await transaction.tenantMembership.upsert({
         where: { userId_tenantId: { userId: user.id, tenantId: tenant.id } },
         update: { role, status: 'ACTIVE' },
