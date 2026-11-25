@@ -34,6 +34,9 @@ import {
   DevelopmentPreviewInvitationDelivery,
   STAFF_INVITATION_DELIVERY,
 } from './modules/staff/staff-invitation-delivery';
+import { AuditController } from './modules/audit/audit.controller';
+import { AuditRepository } from './modules/audit/audit.repository';
+import { AuditService } from './modules/audit/audit.service';
 
 @Module({
   imports: [
@@ -50,6 +53,7 @@ import {
     StaffController,
     StaffInvitationController,
     PublicInvitationController,
+    AuditController,
   ],
   providers: [
     PrismaService,
@@ -76,6 +80,8 @@ import {
     PermissionsGuard,
     CsrfGuard,
     LoginRateLimitService,
+    AuditRepository,
+    AuditService,
   ],
 })
 export class AppModule {}

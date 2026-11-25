@@ -8,6 +8,7 @@ import { Permission, type TenantContext } from '@aicrm/shared';
 import { Prisma } from '@aicrm/database';
 import { PrismaService } from '../../database/prisma.service';
 import { assertTenantContext, scopeTenantTransaction } from '../context/tenant-context';
+import { AuditService } from '../audit/audit.service';
 
 const staffSelect = {
   id: true,
@@ -41,7 +42,10 @@ export type StaffRecord = Prisma.TenantMembershipGetPayload<{ select: typeof sta
 
 @Injectable()
 export class StaffRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   async list(
     context: TenantContext,
@@ -127,11 +131,21 @@ export class StaffRepository {
         await this.assertAnotherActiveAdministrator(transaction, trusted.tenantId, target.id);
       }
 
-      return transaction.tenantMembership.update({
+      const updated = await transaction.tenantMembership.update({
         where: { id: target.id },
         data: { role },
         select: staffSelect,
       });
+      await this.audit.record(transaction, trusted, {
+        eventType: 'staff.role.changed',
+        category: 'STAFF',
+        action: 'change-role',
+        resourceType: 'staff_membership',
+        resourceId: target.id,
+        outcome: 'SUCCESS',
+        metadata: { previousRole: target.role, newRole: role },
+      });
+      return updated;
     });
   }
 
@@ -155,11 +169,22 @@ export class StaffRepository {
         await this.assertAnotherActiveAdministrator(transaction, trusted.tenantId, target.id);
       }
 
-      return transaction.tenantMembership.update({
+      const updated = await transaction.tenantMembership.update({
         where: { id: target.id },
         data: { status },
         select: staffSelect,
       });
+      await this.audit.record(transaction, trusted, {
+        eventType:
+          status === 'ACTIVE' ? 'staff.membership.activated' : 'staff.membership.deactivated',
+        category: 'STAFF',
+        action: status === 'ACTIVE' ? 'activate-membership' : 'deactivate-membership',
+        resourceType: 'staff_membership',
+        resourceId: target.id,
+        outcome: 'SUCCESS',
+        metadata: { previousStatus: target.status, newStatus: status },
+      });
+      return updated;
     });
   }
 
@@ -206,10 +231,20 @@ export class StaffRepository {
         });
       }
 
-      return transaction.tenantMembership.findUnique({
+      const updated = await transaction.tenantMembership.findUnique({
         where: { id: target.id },
         select: staffSelect,
       });
+      await this.audit.record(transaction, trusted, {
+        eventType: 'staff.branch_assignment.changed',
+        category: 'STAFF',
+        action: 'replace-branch-assignments',
+        resourceType: 'staff_membership',
+        resourceId: target.id,
+        outcome: 'SUCCESS',
+        metadata: { branchCount: branches.length },
+      });
+      return updated;
     });
   }
 

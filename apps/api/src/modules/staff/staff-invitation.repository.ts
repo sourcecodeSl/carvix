@@ -9,6 +9,7 @@ import { Prisma } from '@aicrm/database';
 import { AuthPrismaService } from '../../database/auth-prisma.service';
 import { PrismaService } from '../../database/prisma.service';
 import { assertTenantContext, isUuid, scopeTenantTransaction } from '../context/tenant-context';
+import { AuditService } from '../audit/audit.service';
 
 const invitationSelect = {
   id: true,
@@ -56,6 +57,7 @@ export class StaffInvitationRepository {
   constructor(
     private readonly prisma: PrismaService,
     private readonly authPrisma: AuthPrismaService,
+    private readonly audit: AuditService,
   ) {}
 
   async resolveToken(
@@ -171,10 +173,20 @@ export class StaffInvitationRepository {
           })),
         });
       }
-      return transaction.staffInvitation.findUniqueOrThrow({
+      const created = await transaction.staffInvitation.findUniqueOrThrow({
         where: { id: invitation.id },
         select: invitationSelect,
       });
+      await this.audit.record(transaction, trusted, {
+        eventType: 'staff.invitation.created',
+        category: 'INVITATION',
+        action: 'create',
+        resourceType: 'staff_invitation',
+        resourceId: invitation.id,
+        outcome: 'SUCCESS',
+        metadata: { role: values.role, branchCount: branches.length, invitationStatus: 'PENDING' },
+      });
+      return created;
     });
   }
 
@@ -240,10 +252,20 @@ export class StaffInvitationRepository {
         where: { id: invitation.id },
         data: { status: 'CANCELLED', cancelledAt: new Date() },
       });
-      return transaction.staffInvitation.findUniqueOrThrow({
+      const cancelled = await transaction.staffInvitation.findUniqueOrThrow({
         where: { id: invitation.id },
         select: invitationSelect,
       });
+      await this.audit.record(transaction, trusted, {
+        eventType: 'staff.invitation.cancelled',
+        category: 'INVITATION',
+        action: 'cancel',
+        resourceType: 'staff_invitation',
+        resourceId: invitation.id,
+        outcome: 'SUCCESS',
+        metadata: { invitationStatus: 'CANCELLED' },
+      });
+      return cancelled;
     });
   }
 
@@ -293,6 +315,25 @@ export class StaffInvitationRepository {
         where: { id: invitation.id },
         data: { status: 'ACCEPTED', acceptedAt: new Date() },
       });
+      await this.audit.record(
+        transaction,
+        {
+          kind: 'tenant',
+          tenantId,
+          userId,
+          membershipId: membership.id,
+          permissions: [],
+        },
+        {
+          eventType: 'staff.invitation.accepted',
+          category: 'INVITATION',
+          action: 'accept',
+          resourceType: 'staff_invitation',
+          resourceId: invitation.id,
+          outcome: 'SUCCESS',
+          metadata: { invitationStatus: 'ACCEPTED', branchCount: invitation.branches.length },
+        },
+      );
       return true;
     });
   }
@@ -372,6 +413,25 @@ export class StaffInvitationRepository {
         where: { id: invitation.id },
         data: { status: 'ACCEPTED', acceptedAt: new Date() },
       });
+      await this.audit.record(
+        transaction,
+        {
+          kind: 'tenant',
+          tenantId,
+          userId: user.id,
+          membershipId: membership.id,
+          permissions: [],
+        },
+        {
+          eventType: 'staff.invitation.accepted',
+          category: 'INVITATION',
+          action: 'accept',
+          resourceType: 'staff_invitation',
+          resourceId: invitation.id,
+          outcome: 'SUCCESS',
+          metadata: { invitationStatus: 'ACCEPTED', branchCount: invitation.branches.length },
+        },
+      );
       return 'accepted';
     });
   }

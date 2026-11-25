@@ -3,6 +3,7 @@ import { Permission, type TenantContext } from '@aicrm/shared';
 import { Prisma } from '@aicrm/database';
 import { PrismaService } from '../../database/prisma.service';
 import { assertTenantContext, scopeTenantTransaction } from '../context/tenant-context';
+import { AuditService } from '../audit/audit.service';
 
 const branchSelect = {
   id: true,
@@ -21,7 +22,10 @@ export type BranchRecord = Prisma.BranchGetPayload<{ select: typeof branchSelect
 
 @Injectable()
 export class BranchRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   async findForDealership(
     context: TenantContext | null,
@@ -84,7 +88,7 @@ export class BranchRepository {
         select: { id: true },
       });
       if (!dealership) return null;
-      return transaction.branch.create({
+      const created = await transaction.branch.create({
         data: {
           ...data,
           tenantId: trusted.tenantId,
@@ -92,6 +96,16 @@ export class BranchRepository {
         },
         select: branchSelect,
       });
+      await this.audit.record(transaction, trusted, {
+        eventType: 'branch.created',
+        category: 'BRANCH',
+        action: 'create',
+        resourceType: 'branch',
+        resourceId: created.id,
+        outcome: 'SUCCESS',
+        metadata: { status: created.status },
+      });
+      return created;
     });
   }
 
@@ -109,11 +123,21 @@ export class BranchRepository {
         select: { id: true },
       });
       if (!branch) return null;
-      return transaction.branch.update({
+      const updated = await transaction.branch.update({
         where: { id: branch.id },
         data,
         select: branchSelect,
       });
+      await this.audit.record(transaction, trusted, {
+        eventType: 'branch.updated',
+        category: 'BRANCH',
+        action: 'update',
+        resourceType: 'branch',
+        resourceId: branch.id,
+        outcome: 'SUCCESS',
+        metadata: { changedFields: Object.keys(data).map((key) => String(key)) },
+      });
+      return updated;
     });
   }
 
@@ -131,11 +155,24 @@ export class BranchRepository {
         select: { id: true },
       });
       if (!branch) return null;
-      return transaction.branch.update({
+      const updated = await transaction.branch.update({
         where: { id: branch.id },
         data: { status },
         select: branchSelect,
       });
+      await this.audit.record(transaction, trusted, {
+        eventType: status === 'ACTIVE' ? 'branch.activated' : 'branch.deactivated',
+        category: 'BRANCH',
+        action: status === 'ACTIVE' ? 'activate' : 'deactivate',
+        resourceType: 'branch',
+        resourceId: branch.id,
+        outcome: 'SUCCESS',
+        metadata: {
+          previousStatus: status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
+          newStatus: status,
+        },
+      });
+      return updated;
     });
   }
 

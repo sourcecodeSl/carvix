@@ -79,3 +79,26 @@ export const PlatformAdministratorStatus = {
 } as const
 
 export type PlatformAdministratorStatus = (typeof PlatformAdministratorStatus)[keyof typeof PlatformAdministratorStatus]
+
+
+export const AuditEventCategory = {
+  AUTHENTICATION: 'AUTHENTICATION',
+  AUTHORIZATION: 'AUTHORIZATION',
+  DEALERSHIP: 'DEALERSHIP',
+  BRANCH: 'BRANCH',
+  STAFF: 'STAFF',
+  INVITATION: 'INVITATION',
+  SECURITY: 'SECURITY',
+  SYSTEM: 'SYSTEM'
+} as const
+
+export type AuditEventCategory = (typeof AuditEventCategory)[keyof typeof AuditEventCategory]
+
+
+export const AuditEventOutcome = {
+  SUCCESS: 'SUCCESS',
+  FAILURE: 'FAILURE',
+  DENIED: 'DENIED'
+} as const
+
+export type AuditEventOutcome = (typeof AuditEventOutcome)[keyof typeof AuditEventOutcome]

@@ -446,10 +446,6 @@ export type EnumUserStatusFieldUpdateOperationsInput = {
   set?: $Enums.UserStatus
 }
 
-export type NullableStringFieldUpdateOperationsInput = {
-  set?: string | null
-}
-
 export type UserCreateNestedOneWithoutPasswordCredentialInput = {
   create?: Prisma.XOR<Prisma.UserCreateWithoutPasswordCredentialInput, Prisma.UserUncheckedCreateWithoutPasswordCredentialInput>
   connectOrCreate?: Prisma.UserCreateOrConnectWithoutPasswordCredentialInput

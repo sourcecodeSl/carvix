@@ -195,6 +195,7 @@ export type TenantWhereInput = {
   branches?: Prisma.BranchListRelationFilter
   memberships?: Prisma.TenantMembershipListRelationFilter
   staffInvitations?: Prisma.StaffInvitationListRelationFilter
+  auditEvents?: Prisma.AuditEventListRelationFilter
 }
 
 export type TenantOrderByWithRelationInput = {
@@ -209,6 +210,7 @@ export type TenantOrderByWithRelationInput = {
   branches?: Prisma.BranchOrderByRelationAggregateInput
   memberships?: Prisma.TenantMembershipOrderByRelationAggregateInput
   staffInvitations?: Prisma.StaffInvitationOrderByRelationAggregateInput
+  auditEvents?: Prisma.AuditEventOrderByRelationAggregateInput
 }
 
 export type TenantWhereUniqueInput = Prisma.AtLeast<{
@@ -226,6 +228,7 @@ export type TenantWhereUniqueInput = Prisma.AtLeast<{
   branches?: Prisma.BranchListRelationFilter
   memberships?: Prisma.TenantMembershipListRelationFilter
   staffInvitations?: Prisma.StaffInvitationListRelationFilter
+  auditEvents?: Prisma.AuditEventListRelationFilter
 }, "id" | "slug">
 
 export type TenantOrderByWithAggregationInput = {
@@ -264,6 +267,7 @@ export type TenantCreateInput = {
   branches?: Prisma.BranchCreateNestedManyWithoutTenantInput
   memberships?: Prisma.TenantMembershipCreateNestedManyWithoutTenantInput
   staffInvitations?: Prisma.StaffInvitationCreateNestedManyWithoutTenantInput
+  auditEvents?: Prisma.AuditEventCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateInput = {
@@ -278,6 +282,7 @@ export type TenantUncheckedCreateInput = {
   branches?: Prisma.BranchUncheckedCreateNestedManyWithoutTenantInput
   memberships?: Prisma.TenantMembershipUncheckedCreateNestedManyWithoutTenantInput
   staffInvitations?: Prisma.StaffInvitationUncheckedCreateNestedManyWithoutTenantInput
+  auditEvents?: Prisma.AuditEventUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUpdateInput = {
@@ -292,6 +297,7 @@ export type TenantUpdateInput = {
   branches?: Prisma.BranchUpdateManyWithoutTenantNestedInput
   memberships?: Prisma.TenantMembershipUpdateManyWithoutTenantNestedInput
   staffInvitations?: Prisma.StaffInvitationUpdateManyWithoutTenantNestedInput
+  auditEvents?: Prisma.AuditEventUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateInput = {
@@ -306,6 +312,7 @@ export type TenantUncheckedUpdateInput = {
   branches?: Prisma.BranchUncheckedUpdateManyWithoutTenantNestedInput
   memberships?: Prisma.TenantMembershipUncheckedUpdateManyWithoutTenantNestedInput
   staffInvitations?: Prisma.StaffInvitationUncheckedUpdateManyWithoutTenantNestedInput
+  auditEvents?: Prisma.AuditEventUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateManyInput = {
@@ -335,6 +342,11 @@ export type TenantUncheckedUpdateManyInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+export type TenantNullableScalarRelationFilter = {
+  is?: Prisma.TenantWhereInput | null
+  isNot?: Prisma.TenantWhereInput | null
+}
+
 export type TenantCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
@@ -362,26 +374,29 @@ export type TenantMinOrderByAggregateInput = {
   updatedAt?: Prisma.SortOrder
 }
 
-export type TenantNullableScalarRelationFilter = {
-  is?: Prisma.TenantWhereInput | null
-  isNot?: Prisma.TenantWhereInput | null
-}
-
 export type TenantScalarRelationFilter = {
   is?: Prisma.TenantWhereInput
   isNot?: Prisma.TenantWhereInput
 }
 
-export type StringFieldUpdateOperationsInput = {
-  set?: string
+export type TenantCreateNestedOneWithoutAuditEventsInput = {
+  create?: Prisma.XOR<Prisma.TenantCreateWithoutAuditEventsInput, Prisma.TenantUncheckedCreateWithoutAuditEventsInput>
+  connectOrCreate?: Prisma.TenantCreateOrConnectWithoutAuditEventsInput
+  connect?: Prisma.TenantWhereUniqueInput
+}
+
+export type TenantUpdateOneWithoutAuditEventsNestedInput = {
+  create?: Prisma.XOR<Prisma.TenantCreateWithoutAuditEventsInput, Prisma.TenantUncheckedCreateWithoutAuditEventsInput>
+  connectOrCreate?: Prisma.TenantCreateOrConnectWithoutAuditEventsInput
+  upsert?: Prisma.TenantUpsertWithoutAuditEventsInput
+  disconnect?: Prisma.TenantWhereInput | boolean
+  delete?: Prisma.TenantWhereInput | boolean
+  connect?: Prisma.TenantWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.TenantUpdateToOneWithWhereWithoutAuditEventsInput, Prisma.TenantUpdateWithoutAuditEventsInput>, Prisma.TenantUncheckedUpdateWithoutAuditEventsInput>
 }
 
 export type EnumTenantStatusFieldUpdateOperationsInput = {
   set?: $Enums.TenantStatus
-}
-
-export type DateTimeFieldUpdateOperationsInput = {
-  set?: Date | string
 }
 
 export type TenantCreateNestedOneWithoutUsersInput = {
@@ -456,6 +471,78 @@ export type TenantUpdateOneRequiredWithoutStaffInvitationsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.TenantUpdateToOneWithWhereWithoutStaffInvitationsInput, Prisma.TenantUpdateWithoutStaffInvitationsInput>, Prisma.TenantUncheckedUpdateWithoutStaffInvitationsInput>
 }
 
+export type TenantCreateWithoutAuditEventsInput = {
+  id?: string
+  name: string
+  slug: string
+  status?: $Enums.TenantStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  users?: Prisma.UserCreateNestedManyWithoutTenantInput
+  dealership?: Prisma.DealershipCreateNestedOneWithoutTenantInput
+  branches?: Prisma.BranchCreateNestedManyWithoutTenantInput
+  memberships?: Prisma.TenantMembershipCreateNestedManyWithoutTenantInput
+  staffInvitations?: Prisma.StaffInvitationCreateNestedManyWithoutTenantInput
+}
+
+export type TenantUncheckedCreateWithoutAuditEventsInput = {
+  id?: string
+  name: string
+  slug: string
+  status?: $Enums.TenantStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  users?: Prisma.UserUncheckedCreateNestedManyWithoutTenantInput
+  dealership?: Prisma.DealershipUncheckedCreateNestedOneWithoutTenantInput
+  branches?: Prisma.BranchUncheckedCreateNestedManyWithoutTenantInput
+  memberships?: Prisma.TenantMembershipUncheckedCreateNestedManyWithoutTenantInput
+  staffInvitations?: Prisma.StaffInvitationUncheckedCreateNestedManyWithoutTenantInput
+}
+
+export type TenantCreateOrConnectWithoutAuditEventsInput = {
+  where: Prisma.TenantWhereUniqueInput
+  create: Prisma.XOR<Prisma.TenantCreateWithoutAuditEventsInput, Prisma.TenantUncheckedCreateWithoutAuditEventsInput>
+}
+
+export type TenantUpsertWithoutAuditEventsInput = {
+  update: Prisma.XOR<Prisma.TenantUpdateWithoutAuditEventsInput, Prisma.TenantUncheckedUpdateWithoutAuditEventsInput>
+  create: Prisma.XOR<Prisma.TenantCreateWithoutAuditEventsInput, Prisma.TenantUncheckedCreateWithoutAuditEventsInput>
+  where?: Prisma.TenantWhereInput
+}
+
+export type TenantUpdateToOneWithWhereWithoutAuditEventsInput = {
+  where?: Prisma.TenantWhereInput
+  data: Prisma.XOR<Prisma.TenantUpdateWithoutAuditEventsInput, Prisma.TenantUncheckedUpdateWithoutAuditEventsInput>
+}
+
+export type TenantUpdateWithoutAuditEventsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  users?: Prisma.UserUpdateManyWithoutTenantNestedInput
+  dealership?: Prisma.DealershipUpdateOneWithoutTenantNestedInput
+  branches?: Prisma.BranchUpdateManyWithoutTenantNestedInput
+  memberships?: Prisma.TenantMembershipUpdateManyWithoutTenantNestedInput
+  staffInvitations?: Prisma.StaffInvitationUpdateManyWithoutTenantNestedInput
+}
+
+export type TenantUncheckedUpdateWithoutAuditEventsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumTenantStatusFieldUpdateOperationsInput | $Enums.TenantStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  users?: Prisma.UserUncheckedUpdateManyWithoutTenantNestedInput
+  dealership?: Prisma.DealershipUncheckedUpdateOneWithoutTenantNestedInput
+  branches?: Prisma.BranchUncheckedUpdateManyWithoutTenantNestedInput
+  memberships?: Prisma.TenantMembershipUncheckedUpdateManyWithoutTenantNestedInput
+  staffInvitations?: Prisma.StaffInvitationUncheckedUpdateManyWithoutTenantNestedInput
+}
+
 export type TenantCreateWithoutUsersInput = {
   id?: string
   name: string
@@ -467,6 +554,7 @@ export type TenantCreateWithoutUsersInput = {
   branches?: Prisma.BranchCreateNestedManyWithoutTenantInput
   memberships?: Prisma.TenantMembershipCreateNestedManyWithoutTenantInput
   staffInvitations?: Prisma.StaffInvitationCreateNestedManyWithoutTenantInput
+  auditEvents?: Prisma.AuditEventCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutUsersInput = {
@@ -480,6 +568,7 @@ export type TenantUncheckedCreateWithoutUsersInput = {
   branches?: Prisma.BranchUncheckedCreateNestedManyWithoutTenantInput
   memberships?: Prisma.TenantMembershipUncheckedCreateNestedManyWithoutTenantInput
   staffInvitations?: Prisma.StaffInvitationUncheckedCreateNestedManyWithoutTenantInput
+  auditEvents?: Prisma.AuditEventUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutUsersInput = {
@@ -509,6 +598,7 @@ export type TenantUpdateWithoutUsersInput = {
   branches?: Prisma.BranchUpdateManyWithoutTenantNestedInput
   memberships?: Prisma.TenantMembershipUpdateManyWithoutTenantNestedInput
   staffInvitations?: Prisma.StaffInvitationUpdateManyWithoutTenantNestedInput
+  auditEvents?: Prisma.AuditEventUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutUsersInput = {
@@ -522,6 +612,7 @@ export type TenantUncheckedUpdateWithoutUsersInput = {
   branches?: Prisma.BranchUncheckedUpdateManyWithoutTenantNestedInput
   memberships?: Prisma.TenantMembershipUncheckedUpdateManyWithoutTenantNestedInput
   staffInvitations?: Prisma.StaffInvitationUncheckedUpdateManyWithoutTenantNestedInput
+  auditEvents?: Prisma.AuditEventUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutDealershipInput = {
@@ -535,6 +626,7 @@ export type TenantCreateWithoutDealershipInput = {
   branches?: Prisma.BranchCreateNestedManyWithoutTenantInput
   memberships?: Prisma.TenantMembershipCreateNestedManyWithoutTenantInput
   staffInvitations?: Prisma.StaffInvitationCreateNestedManyWithoutTenantInput
+  auditEvents?: Prisma.AuditEventCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutDealershipInput = {
@@ -548,6 +640,7 @@ export type TenantUncheckedCreateWithoutDealershipInput = {
   branches?: Prisma.BranchUncheckedCreateNestedManyWithoutTenantInput
   memberships?: Prisma.TenantMembershipUncheckedCreateNestedManyWithoutTenantInput
   staffInvitations?: Prisma.StaffInvitationUncheckedCreateNestedManyWithoutTenantInput
+  auditEvents?: Prisma.AuditEventUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutDealershipInput = {
@@ -577,6 +670,7 @@ export type TenantUpdateWithoutDealershipInput = {
   branches?: Prisma.BranchUpdateManyWithoutTenantNestedInput
   memberships?: Prisma.TenantMembershipUpdateManyWithoutTenantNestedInput
   staffInvitations?: Prisma.StaffInvitationUpdateManyWithoutTenantNestedInput
+  auditEvents?: Prisma.AuditEventUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutDealershipInput = {
@@ -590,6 +684,7 @@ export type TenantUncheckedUpdateWithoutDealershipInput = {
   branches?: Prisma.BranchUncheckedUpdateManyWithoutTenantNestedInput
   memberships?: Prisma.TenantMembershipUncheckedUpdateManyWithoutTenantNestedInput
   staffInvitations?: Prisma.StaffInvitationUncheckedUpdateManyWithoutTenantNestedInput
+  auditEvents?: Prisma.AuditEventUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutBranchesInput = {
@@ -603,6 +698,7 @@ export type TenantCreateWithoutBranchesInput = {
   dealership?: Prisma.DealershipCreateNestedOneWithoutTenantInput
   memberships?: Prisma.TenantMembershipCreateNestedManyWithoutTenantInput
   staffInvitations?: Prisma.StaffInvitationCreateNestedManyWithoutTenantInput
+  auditEvents?: Prisma.AuditEventCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutBranchesInput = {
@@ -616,6 +712,7 @@ export type TenantUncheckedCreateWithoutBranchesInput = {
   dealership?: Prisma.DealershipUncheckedCreateNestedOneWithoutTenantInput
   memberships?: Prisma.TenantMembershipUncheckedCreateNestedManyWithoutTenantInput
   staffInvitations?: Prisma.StaffInvitationUncheckedCreateNestedManyWithoutTenantInput
+  auditEvents?: Prisma.AuditEventUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutBranchesInput = {
@@ -645,6 +742,7 @@ export type TenantUpdateWithoutBranchesInput = {
   dealership?: Prisma.DealershipUpdateOneWithoutTenantNestedInput
   memberships?: Prisma.TenantMembershipUpdateManyWithoutTenantNestedInput
   staffInvitations?: Prisma.StaffInvitationUpdateManyWithoutTenantNestedInput
+  auditEvents?: Prisma.AuditEventUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutBranchesInput = {
@@ -658,6 +756,7 @@ export type TenantUncheckedUpdateWithoutBranchesInput = {
   dealership?: Prisma.DealershipUncheckedUpdateOneWithoutTenantNestedInput
   memberships?: Prisma.TenantMembershipUncheckedUpdateManyWithoutTenantNestedInput
   staffInvitations?: Prisma.StaffInvitationUncheckedUpdateManyWithoutTenantNestedInput
+  auditEvents?: Prisma.AuditEventUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutMembershipsInput = {
@@ -671,6 +770,7 @@ export type TenantCreateWithoutMembershipsInput = {
   dealership?: Prisma.DealershipCreateNestedOneWithoutTenantInput
   branches?: Prisma.BranchCreateNestedManyWithoutTenantInput
   staffInvitations?: Prisma.StaffInvitationCreateNestedManyWithoutTenantInput
+  auditEvents?: Prisma.AuditEventCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutMembershipsInput = {
@@ -684,6 +784,7 @@ export type TenantUncheckedCreateWithoutMembershipsInput = {
   dealership?: Prisma.DealershipUncheckedCreateNestedOneWithoutTenantInput
   branches?: Prisma.BranchUncheckedCreateNestedManyWithoutTenantInput
   staffInvitations?: Prisma.StaffInvitationUncheckedCreateNestedManyWithoutTenantInput
+  auditEvents?: Prisma.AuditEventUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutMembershipsInput = {
@@ -713,6 +814,7 @@ export type TenantUpdateWithoutMembershipsInput = {
   dealership?: Prisma.DealershipUpdateOneWithoutTenantNestedInput
   branches?: Prisma.BranchUpdateManyWithoutTenantNestedInput
   staffInvitations?: Prisma.StaffInvitationUpdateManyWithoutTenantNestedInput
+  auditEvents?: Prisma.AuditEventUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutMembershipsInput = {
@@ -726,6 +828,7 @@ export type TenantUncheckedUpdateWithoutMembershipsInput = {
   dealership?: Prisma.DealershipUncheckedUpdateOneWithoutTenantNestedInput
   branches?: Prisma.BranchUncheckedUpdateManyWithoutTenantNestedInput
   staffInvitations?: Prisma.StaffInvitationUncheckedUpdateManyWithoutTenantNestedInput
+  auditEvents?: Prisma.AuditEventUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantCreateWithoutStaffInvitationsInput = {
@@ -739,6 +842,7 @@ export type TenantCreateWithoutStaffInvitationsInput = {
   dealership?: Prisma.DealershipCreateNestedOneWithoutTenantInput
   branches?: Prisma.BranchCreateNestedManyWithoutTenantInput
   memberships?: Prisma.TenantMembershipCreateNestedManyWithoutTenantInput
+  auditEvents?: Prisma.AuditEventCreateNestedManyWithoutTenantInput
 }
 
 export type TenantUncheckedCreateWithoutStaffInvitationsInput = {
@@ -752,6 +856,7 @@ export type TenantUncheckedCreateWithoutStaffInvitationsInput = {
   dealership?: Prisma.DealershipUncheckedCreateNestedOneWithoutTenantInput
   branches?: Prisma.BranchUncheckedCreateNestedManyWithoutTenantInput
   memberships?: Prisma.TenantMembershipUncheckedCreateNestedManyWithoutTenantInput
+  auditEvents?: Prisma.AuditEventUncheckedCreateNestedManyWithoutTenantInput
 }
 
 export type TenantCreateOrConnectWithoutStaffInvitationsInput = {
@@ -781,6 +886,7 @@ export type TenantUpdateWithoutStaffInvitationsInput = {
   dealership?: Prisma.DealershipUpdateOneWithoutTenantNestedInput
   branches?: Prisma.BranchUpdateManyWithoutTenantNestedInput
   memberships?: Prisma.TenantMembershipUpdateManyWithoutTenantNestedInput
+  auditEvents?: Prisma.AuditEventUpdateManyWithoutTenantNestedInput
 }
 
 export type TenantUncheckedUpdateWithoutStaffInvitationsInput = {
@@ -794,6 +900,7 @@ export type TenantUncheckedUpdateWithoutStaffInvitationsInput = {
   dealership?: Prisma.DealershipUncheckedUpdateOneWithoutTenantNestedInput
   branches?: Prisma.BranchUncheckedUpdateManyWithoutTenantNestedInput
   memberships?: Prisma.TenantMembershipUncheckedUpdateManyWithoutTenantNestedInput
+  auditEvents?: Prisma.AuditEventUncheckedUpdateManyWithoutTenantNestedInput
 }
 
 
@@ -806,6 +913,7 @@ export type TenantCountOutputType = {
   branches: number
   memberships: number
   staffInvitations: number
+  auditEvents: number
 }
 
 export type TenantCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -813,6 +921,7 @@ export type TenantCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions
   branches?: boolean | TenantCountOutputTypeCountBranchesArgs
   memberships?: boolean | TenantCountOutputTypeCountMembershipsArgs
   staffInvitations?: boolean | TenantCountOutputTypeCountStaffInvitationsArgs
+  auditEvents?: boolean | TenantCountOutputTypeCountAuditEventsArgs
 }
 
 /**
@@ -853,6 +962,13 @@ export type TenantCountOutputTypeCountStaffInvitationsArgs<ExtArgs extends runti
   where?: Prisma.StaffInvitationWhereInput
 }
 
+/**
+ * TenantCountOutputType without action
+ */
+export type TenantCountOutputTypeCountAuditEventsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AuditEventWhereInput
+}
+
 
 export type TenantSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -866,6 +982,7 @@ export type TenantSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   branches?: boolean | Prisma.Tenant$branchesArgs<ExtArgs>
   memberships?: boolean | Prisma.Tenant$membershipsArgs<ExtArgs>
   staffInvitations?: boolean | Prisma.Tenant$staffInvitationsArgs<ExtArgs>
+  auditEvents?: boolean | Prisma.Tenant$auditEventsArgs<ExtArgs>
   _count?: boolean | Prisma.TenantCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["tenant"]>
 
@@ -903,6 +1020,7 @@ export type TenantInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   branches?: boolean | Prisma.Tenant$branchesArgs<ExtArgs>
   memberships?: boolean | Prisma.Tenant$membershipsArgs<ExtArgs>
   staffInvitations?: boolean | Prisma.Tenant$staffInvitationsArgs<ExtArgs>
+  auditEvents?: boolean | Prisma.Tenant$auditEventsArgs<ExtArgs>
   _count?: boolean | Prisma.TenantCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type TenantIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -916,6 +1034,7 @@ export type $TenantPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     branches: Prisma.$BranchPayload<ExtArgs>[]
     memberships: Prisma.$TenantMembershipPayload<ExtArgs>[]
     staffInvitations: Prisma.$StaffInvitationPayload<ExtArgs>[]
+    auditEvents: Prisma.$AuditEventPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1323,6 +1442,7 @@ export interface Prisma__TenantClient<T, Null = never, ExtArgs extends runtime.T
   branches<T extends Prisma.Tenant$branchesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Tenant$branchesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BranchPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   memberships<T extends Prisma.Tenant$membershipsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Tenant$membershipsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TenantMembershipPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   staffInvitations<T extends Prisma.Tenant$staffInvitationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Tenant$staffInvitationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$StaffInvitationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  auditEvents<T extends Prisma.Tenant$auditEventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Tenant$auditEventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AuditEventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1863,6 +1983,30 @@ export type Tenant$staffInvitationsArgs<ExtArgs extends runtime.Types.Extensions
   take?: number
   skip?: number
   distinct?: Prisma.StaffInvitationScalarFieldEnum | Prisma.StaffInvitationScalarFieldEnum[]
+}
+
+/**
+ * Tenant.auditEvents
+ */
+export type Tenant$auditEventsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the AuditEvent
+   */
+  select?: Prisma.AuditEventSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the AuditEvent
+   */
+  omit?: Prisma.AuditEventOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AuditEventInclude<ExtArgs> | null
+  where?: Prisma.AuditEventWhereInput
+  orderBy?: Prisma.AuditEventOrderByWithRelationInput | Prisma.AuditEventOrderByWithRelationInput[]
+  cursor?: Prisma.AuditEventWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AuditEventScalarFieldEnum | Prisma.AuditEventScalarFieldEnum[]
 }
 
 /**

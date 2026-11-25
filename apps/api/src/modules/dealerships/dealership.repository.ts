@@ -3,6 +3,7 @@ import { Permission, type TenantContext } from '@aicrm/shared';
 import { Prisma } from '@aicrm/database';
 import { PrismaService } from '../../database/prisma.service';
 import { assertTenantContext, scopeTenantTransaction } from '../context/tenant-context';
+import { AuditService } from '../audit/audit.service';
 
 const dealershipSelect = {
   id: true,
@@ -22,7 +23,10 @@ export type DealershipRecord = Prisma.DealershipGetPayload<{
 
 @Injectable()
 export class DealershipRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   async findForTenant(context: TenantContext | null): Promise<DealershipRecord[]> {
     const trusted = this.requirePermission(context, Permission.DEALER_READ);
@@ -64,11 +68,23 @@ export class DealershipRepository {
       });
       if (!dealership) return null;
 
-      return transaction.dealership.update({
+      const updated = await transaction.dealership.update({
         where: { id: dealership.id },
         data,
         select: dealershipSelect,
       });
+      await this.audit.record(transaction, trusted, {
+        eventType: 'dealership.profile.updated',
+        category: 'DEALERSHIP',
+        action: 'update',
+        resourceType: 'dealership',
+        resourceId: dealership.id,
+        outcome: 'SUCCESS',
+        metadata: {
+          changedFields: Object.keys(data).filter((key) => typeof key === 'string'),
+        },
+      });
+      return updated;
     });
   }
 

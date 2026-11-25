@@ -58,13 +58,35 @@ export class AuthController {
       },
     });
     if (!user || user.status !== 'ACTIVE' || !user.passwordCredential) {
+      await this.recordAuthEvent(
+        null,
+        'auth.login.failure',
+        null,
+        'login',
+        'session',
+        null,
+        'FAILURE',
+        request,
+      );
       throw new UnauthorizedException('Invalid email or password.');
     }
     const valid = await this.passwords.verifyPassword(
       user.passwordCredential.passwordHash,
       dto.password,
     );
-    if (!valid) throw new UnauthorizedException('Invalid email or password.');
+    if (!valid) {
+      await this.recordAuthEvent(
+        null,
+        'auth.login.failure',
+        null,
+        'login',
+        'session',
+        null,
+        'FAILURE',
+        request,
+      );
+      throw new UnauthorizedException('Invalid email or password.');
+    }
 
     const { token, expiresAt } = await this.sessions.create(user.id, null);
     const sessionTokenHash = this.sessions.hashToken(token);
@@ -80,6 +102,16 @@ export class AuthController {
     >`SELECT * FROM public.auth_active_memberships(${sessionTokenHash})`;
     const activeTenantId = memberships.length === 1 ? (memberships[0]?.tenant_id ?? null) : null;
     await this.sessions.setActiveTenantByTokenHash(sessionTokenHash, activeTenantId);
+    await this.recordAuthEvent(
+      sessionTokenHash,
+      'auth.login.success',
+      activeTenantId,
+      'login',
+      'session',
+      null,
+      'SUCCESS',
+      request,
+    );
 
     const production = this.config.getOrThrow<string>('NODE_ENV') === 'production';
     response.cookie(AUTH_COOKIE_NAME, token, {
@@ -115,7 +147,22 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const token = request.cookies?.[AUTH_COOKIE_NAME];
-    if (token) await this.sessions.revokeByToken(token);
+    if (token) {
+      const session = await this.sessions.validate(token);
+      if (session) {
+        await this.recordAuthEvent(
+          this.sessions.hashToken(token),
+          'auth.logout',
+          session.activeTenantId,
+          'logout',
+          'session',
+          session.id,
+          'SUCCESS',
+          request,
+        );
+      }
+      await this.sessions.revokeByToken(token);
+    }
     response.clearCookie(AUTH_COOKIE_NAME, {
       httpOnly: true,
       secure: this.config.getOrThrow<string>('NODE_ENV') === 'production',
@@ -148,6 +195,16 @@ export class AuthController {
     const membership = memberships.find((row) => row.tenant_id === dto.tenantId);
     if (!membership) throw new ForbiddenException('Tenant is not authorized');
     await this.sessions.setActiveTenant(request.auth.sessionId, membership.tenant_id);
+    await this.recordAuthEvent(
+      this.sessions.hashToken(token),
+      'auth.tenant.switched',
+      membership.tenant_id,
+      'switch-tenant',
+      'tenant',
+      membership.tenant_id,
+      'SUCCESS',
+      request,
+    );
     return {
       activeTenant: {
         tenantId: membership.tenant_id,
@@ -155,6 +212,38 @@ export class AuthController {
         role: membership.role,
       },
     };
+  }
+
+  private async recordAuthEvent(
+    sessionTokenHash: string | null,
+    eventType: string,
+    targetTenantId: string | null,
+    action: string,
+    resourceType: string,
+    resourceId: string | null,
+    outcome: 'SUCCESS' | 'FAILURE' | 'DENIED',
+    request: Request,
+  ): Promise<void> {
+    const userAgent =
+      typeof request.headers['user-agent'] === 'string'
+        ? request.headers['user-agent'].slice(0, 256)
+        : null;
+    const requestIdHeader = request.headers['x-request-id'];
+    const requestId = typeof requestIdHeader === 'string' ? requestIdHeader.slice(0, 128) : null;
+    await this.prisma.$queryRaw`
+      SELECT public.audit_record_auth_event(
+        ${sessionTokenHash},
+        ${eventType},
+        ${targetTenantId}::uuid,
+        ${action},
+        ${resourceType},
+        ${resourceId},
+        ${outcome}::"AuditEventOutcome",
+        ${requestId},
+        ${request.ip || null},
+        ${userAgent}
+      )
+    `;
   }
 
   private async buildUserResponse(

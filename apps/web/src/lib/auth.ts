@@ -6,6 +6,9 @@ import type {
   DealershipResponse,
   StaffDirectoryResponse,
   StaffInvitationPreviewResponse,
+  AuditEventPageResponse,
+  AuditEventResponse,
+  AuditSummaryResponse,
 } from '@aicrm/shared';
 
 export const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:3001';
@@ -233,6 +236,42 @@ export function acceptNewStaffInvitation(values: {
     method: 'POST',
     body: JSON.stringify(values),
   });
+}
+
+export function getAuditEvents(filters: {
+  page: number;
+  pageSize: number;
+  eventType?: string;
+  category?: string;
+  outcome?: string;
+  actorUserId?: string;
+  resourceType?: string;
+  startDate?: string;
+  endDate?: string;
+}): Promise<AuditEventPageResponse> {
+  const query = new URLSearchParams({
+    page: String(filters.page),
+    pageSize: String(filters.pageSize),
+  });
+  for (const [key, value] of Object.entries(filters)) {
+    if (key !== 'page' && key !== 'pageSize' && value) query.set(key, String(value));
+  }
+  return requestApi(`/api/v1/audit/events?${query.toString()}`);
+}
+
+export function getAuditEvent(eventId: string): Promise<AuditEventResponse | null> {
+  return requestApi(`/api/v1/audit/events/${encodeURIComponent(eventId)}`);
+}
+
+export function getAuditSummary(filters: {
+  startDate?: string;
+  endDate?: string;
+}): Promise<AuditSummaryResponse> {
+  const query = new URLSearchParams();
+  if (filters.startDate) query.set('startDate', filters.startDate);
+  if (filters.endDate) query.set('endDate', filters.endDate);
+  const suffix = query.size ? `?${query.toString()}` : '';
+  return requestApi(`/api/v1/audit/summary${suffix}`);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

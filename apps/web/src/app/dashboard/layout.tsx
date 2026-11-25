@@ -12,6 +12,7 @@ import {
   MapPinned,
   Store,
   UsersRound,
+  ScrollText,
 } from 'lucide-react';
 import { Permission, type AuthenticatedUserResponse } from '@aicrm/shared';
 import { getCurrentUser, logout, selectActiveTenant } from '../../lib/auth';
@@ -26,6 +27,12 @@ const primaryNavigation = [
     label: 'Staff',
     icon: UsersRound,
     permission: Permission.USER_READ,
+  },
+  {
+    href: '/dashboard/audit',
+    label: 'Activity Logs',
+    icon: ScrollText,
+    permission: Permission.AUDIT_READ,
   },
 ] as const;
 

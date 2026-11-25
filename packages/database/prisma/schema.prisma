@@ -55,6 +55,50 @@ enum PlatformAdministratorStatus {
   SUSPENDED
 }
 
+enum AuditEventCategory {
+  AUTHENTICATION
+  AUTHORIZATION
+  DEALERSHIP
+  BRANCH
+  STAFF
+  INVITATION
+  SECURITY
+  SYSTEM
+}
+
+enum AuditEventOutcome {
+  SUCCESS
+  FAILURE
+  DENIED
+}
+
+model AuditEvent {
+  id               String              @id @default(uuid()) @db.Uuid
+  tenantId         String?             @map("tenant_id") @db.Uuid
+  actorUserId      String?             @map("actor_user_id") @db.Uuid
+  actorMembershipId String?            @map("actor_membership_id") @db.Uuid
+  eventType        String              @map("event_type")
+  category         AuditEventCategory
+  action           String
+  resourceType     String              @map("resource_type")
+  resourceId       String?             @map("resource_id")
+  outcome          AuditEventOutcome
+  requestId        String?             @map("request_id")
+  ipAddress        String?             @map("ip_address")
+  userAgent        String?             @map("user_agent")
+  metadata         Json?
+  schemaVersion    Int                 @default(1) @map("schema_version")
+  occurredAt       DateTime            @default(now()) @map("occurred_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, occurredAt(sort: Desc), id], map: "audit_events_tenant_occurred_id_idx")
+  @@index([tenantId, eventType, occurredAt(sort: Desc)], map: "audit_events_tenant_event_occurred_idx")
+  @@index([tenantId, actorUserId, occurredAt(sort: Desc)], map: "audit_events_tenant_actor_occurred_idx")
+  @@index([tenantId, category, outcome, occurredAt(sort: Desc)], map: "audit_events_tenant_category_outcome_idx")
+  @@map("audit_events")
+}
+
 model Tenant {
   id        String       @id @default(uuid()) @db.Uuid
   name      String
@@ -67,6 +111,7 @@ model Tenant {
   branches Branch[]
   memberships TenantMembership[]
   staffInvitations StaffInvitation[]
+  auditEvents AuditEvent[]
 
   @@map("tenants")
 }

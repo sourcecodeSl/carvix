@@ -25,6 +25,7 @@ export const Permission = {
   USER_INVITE: 'user:invite',
   USER_READ: 'user:read',
   USER_UPDATE: 'user:update',
+  AUDIT_READ: 'audit:read',
   INVENTORY_READ: 'inventory:read',
   INVENTORY_INTEGRATION_MANAGE: 'inventory:integration:manage',
   LEAD_READ: 'lead:read',
@@ -168,6 +169,56 @@ export type CreateStaffInvitationResponse = {
   previewUrl: string;
 };
 
+export type AuditEventCategory =
+  | 'AUTHENTICATION'
+  | 'AUTHORIZATION'
+  | 'DEALERSHIP'
+  | 'BRANCH'
+  | 'STAFF'
+  | 'INVITATION'
+  | 'SECURITY'
+  | 'SYSTEM';
+
+export type AuditEventOutcome = 'SUCCESS' | 'FAILURE' | 'DENIED';
+
+export type AuditEventResponse = {
+  id: string;
+  tenantId: string | null;
+  actorUserId: string | null;
+  actorName: string | null;
+  actorMembershipId: string | null;
+  eventType: string;
+  category: AuditEventCategory;
+  action: string;
+  resourceType: string;
+  resourceId: string | null;
+  outcome: AuditEventOutcome;
+  requestId: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  metadata: Record<string, unknown> | null;
+  schemaVersion: number;
+  occurredAt: string;
+};
+
+export type AuditEventPageResponse = {
+  items: readonly AuditEventResponse[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type AuditSummaryResponse = {
+  period: { start: string | null; end: string | null };
+  total: number;
+  successfulLogins: number;
+  failedLogins: number;
+  accessDenied: number;
+  staffRoleChanges: number;
+  invitationAcceptances: number;
+  branchModifications: number;
+};
+
 export type StaffInvitationPreviewResponse = {
   email: string;
   role: MembershipRole;
@@ -197,6 +248,7 @@ export const RolePermissions: Readonly<Record<MembershipRole, readonly Permissio
     Permission.USER_INVITE,
     Permission.USER_READ,
     Permission.USER_UPDATE,
+    Permission.AUDIT_READ,
     Permission.INVENTORY_READ,
     Permission.INVENTORY_INTEGRATION_MANAGE,
     Permission.LEAD_READ,
