@@ -9,7 +9,7 @@ The active Day 3 development environment uses a dedicated Compose project, Postg
    node infrastructure/postgres/create-local-config.mjs
    ```
 
-   This creates `.env.day3`, `apps/api/.env`, and `packages/database/.env`. The first file configures Compose, the API file contains only authentication and tenant runtime URLs, and the database package file contains the migration URL plus an optional isolated shadow URL. The generator does not print credentials and refuses to overwrite existing files.
+   This creates `.env.day3`, `apps/api/.env`, and `packages/database/.env`. The first file configures Compose, the API file contains runtime URLs and a fresh inventory credential encryption key, and the database package file contains the migration URL plus an optional isolated shadow URL. The generator does not print credentials and refuses to overwrite existing files.
 
 3. Start the isolated local services:
 
@@ -27,6 +27,10 @@ The active Day 3 development environment uses a dedicated Compose project, Postg
    ```
 
 5. Start the API and frontend with `pnpm dev`.
+
+Inventory connection passwords are encrypted using the API's `INVENTORY_CREDENTIAL_ENCRYPTION_KEY`.
+The setup generator creates a separate local key. Preserve it with the API environment file;
+changing or losing it prevents decryption of saved inventory credentials.
 
 The API does not require or receive migration-owner credentials. Use the separate migration URL only for Prisma commands and the explicitly invoked local user-provisioning script. Do not copy it into `apps/api/.env`.
 

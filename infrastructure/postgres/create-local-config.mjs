@@ -16,6 +16,7 @@ if (outputPaths.some((filePath) => existsSync(filePath))) {
 const ownerPassword = randomBytes(32).toString('hex');
 const authPassword = randomBytes(32).toString('hex');
 const appPassword = randomBytes(32).toString('hex');
+const inventoryCredentialKey = randomBytes(32).toString('hex');
 const host = 'localhost';
 const port = '55433';
 const database = 'aicrm_day3_clean';
@@ -42,6 +43,7 @@ REDIS_URL=redis://localhost:6380
 CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 SESSION_TTL_HOURS=24
 LOGIN_LIMIT_PER_MINUTE=5
+INVENTORY_CREDENTIAL_ENCRYPTION_KEY=${inventoryCredentialKey}
 `,
   ],
   [

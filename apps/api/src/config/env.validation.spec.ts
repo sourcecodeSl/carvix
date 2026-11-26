@@ -29,6 +29,7 @@ describe('environment validation', () => {
         DATABASE_AUTH_URL: 'postgresql://aicrm_auth_runtime:aicrm_auth_dev_password@db/aicrm',
         DATABASE_APP_URL: 'postgresql://aicrm_app_runtime:aicrm_app_dev_password@db/aicrm',
         REDIS_URL: 'redis://redis:6379',
+        INVENTORY_CREDENTIAL_ENCRYPTION_KEY: 'a'.repeat(64),
       }),
     ).toThrow(/Development database credentials are prohibited/);
   });

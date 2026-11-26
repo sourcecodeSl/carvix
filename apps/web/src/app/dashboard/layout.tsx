@@ -13,6 +13,7 @@ import {
   Store,
   UsersRound,
   ScrollText,
+  PackageSearch,
 } from 'lucide-react';
 import { Permission, type AuthenticatedUserResponse } from '@aicrm/shared';
 import { getCurrentUser, logout, selectActiveTenant } from '../../lib/auth';
@@ -33,6 +34,12 @@ const primaryNavigation = [
     label: 'Activity Logs',
     icon: ScrollText,
     permission: Permission.AUDIT_READ,
+  },
+  {
+    href: '/dashboard/inventory',
+    label: 'Inventory',
+    icon: PackageSearch,
+    permission: Permission.INVENTORY_READ,
   },
 ] as const;
 

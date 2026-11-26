@@ -10,6 +10,7 @@ import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../../app.module';
+import { REDIS_CLIENT } from '../../redis/redis.provider';
 import { StaffRepository } from './staff.repository';
 
 const enabled = process.env.RUN_POSTGRES_INTEGRATION === 'true';
@@ -208,7 +209,18 @@ describe.skipIf(!enabled)('staff management PostgreSQL integration', () => {
       })),
     });
 
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const rateLimitCounters = new Map<string, number>();
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(REDIS_CLIENT)
+      .useValue({
+        incr: async (key: string) => {
+          const count = (rateLimitCounters.get(key) ?? 0) + 1;
+          rateLimitCounters.set(key, count);
+          return count;
+        },
+        expire: async () => 1,
+      })
+      .compile();
     const config = moduleRef.get(ConfigService);
     config.set('NODE_ENV', 'development');
     config.set('LOGIN_LIMIT_PER_MINUTE', 100);

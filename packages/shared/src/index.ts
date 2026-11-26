@@ -293,6 +293,114 @@ export const RolePermissions: Readonly<Record<MembershipRole, readonly Permissio
   ],
 };
 
+export type InventoryConnectionStatus = 'DRAFT' | 'ACTIVE' | 'INACTIVE' | 'ERROR';
+
+export type InventoryMappingConfiguration = {
+  tableName: string;
+  primaryKeyField: string;
+  idField: string;
+  makeField: string;
+  modelField: string;
+  variantField: string | null;
+  yearField: string | null;
+  registrationYearField: string | null;
+  priceField: string | null;
+  currencyField: string | null;
+  mileageField: string | null;
+  fuelTypeField: string | null;
+  transmissionField: string | null;
+  conditionField: string | null;
+  bodyTypeField: string | null;
+  colorField: string | null;
+  availabilityField: string | null;
+  descriptionField: string | null;
+  imageUrlField: string | null;
+  engineCapacityField: string | null;
+  locationField: string | null;
+  branchField: string | null;
+  featuresField: string | null;
+  serviceHistoryField: string | null;
+  warrantyField: string | null;
+  financeAvailabilityField: string | null;
+  sourceUpdatedAtField: string | null;
+};
+
+export type InventoryConnectionSummary = {
+  id: string;
+  dealershipId: string;
+  name: string;
+  connectorType: 'MYSQL';
+  host: string;
+  port: number;
+  databaseName: string;
+  username: string;
+  status: InventoryConnectionStatus;
+  tlsEnabled: boolean;
+  lastTestedAt: string | null;
+  lastSuccessfulConnectionAt: string | null;
+  mapping: InventoryMappingConfiguration | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type VehicleSummary = {
+  id: string;
+  externalVehicleId: string;
+  dealershipId: string;
+  make: string | null;
+  model: string | null;
+  variant: string | null;
+  year: number | null;
+  registrationYear: number | null;
+  price: string | null;
+  currency: string | null;
+  mileage: number | null;
+  engineCapacity: number | null;
+  fuelType: string | null;
+  transmission: string | null;
+  condition: string | null;
+  bodyType: string | null;
+  color: string | null;
+  location: string | null;
+  branch: string | null;
+  features: readonly string[] | null;
+  serviceHistory: string | null;
+  warranty: string | null;
+  financeAvailability: boolean | null;
+  sourceUpdatedAt: string | null;
+  availabilityStatus: string | null;
+  imageUrls: readonly string[];
+  retrievedAt: string;
+};
+
+export type VehicleDetails = VehicleSummary & {
+  description: string | null;
+  source: 'EXTERNAL_MYSQL';
+};
+
+export type VehicleSearchFilters = {
+  q?: string;
+  make?: string;
+  model?: string;
+  minPrice?: string;
+  maxPrice?: string;
+  minYear?: number;
+  maxYear?: number;
+  fuelType?: string;
+  transmission?: string;
+  availability?: string;
+  sort?: 'newest' | 'priceAsc' | 'priceDesc' | 'yearDesc';
+  page?: number;
+  pageSize?: number;
+};
+
+export type VehicleSearchResult = {
+  items: readonly VehicleSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
 export const PlatformRolePermissions: Readonly<Record<PlatformRole, readonly Permission[]>> = {
   SUPER_ADMIN: [
     Permission.PLATFORM_DEALERS_CREATE,

@@ -9,6 +9,10 @@ import type {
   AuditEventPageResponse,
   AuditEventResponse,
   AuditSummaryResponse,
+  InventoryConnectionSummary,
+  VehicleSearchFilters,
+  VehicleSearchResult,
+  VehicleDetails,
 } from '@aicrm/shared';
 
 export const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:3001';
@@ -272,6 +276,54 @@ export function getAuditSummary(filters: {
   if (filters.endDate) query.set('endDate', filters.endDate);
   const suffix = query.size ? `?${query.toString()}` : '';
   return requestApi(`/api/v1/audit/summary${suffix}`);
+}
+
+export function getInventoryConnections(): Promise<readonly InventoryConnectionSummary[]> {
+  return requestApi('/api/v1/inventory/connections');
+}
+
+export function createInventoryConnection(values: Record<string, unknown>) {
+  return requestApi<InventoryConnectionSummary>('/api/v1/inventory/connections', {
+    method: 'POST',
+    body: JSON.stringify(values),
+  });
+}
+
+export function updateInventoryConnection(connectionId: string, values: Record<string, unknown>) {
+  return requestApi<InventoryConnectionSummary>(
+    `/api/v1/inventory/connections/${encodeURIComponent(connectionId)}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(values),
+    },
+  );
+}
+
+export function testInventoryConnection(connectionId: string) {
+  return requestApi<{ connected: boolean; testedAt: string; mappingAccessible: boolean }>(
+    `/api/v1/inventory/connections/${encodeURIComponent(connectionId)}/test`,
+    { method: 'POST' },
+  );
+}
+
+export function setInventoryConnectionStatus(connectionId: string, status: 'ACTIVE' | 'INACTIVE') {
+  const action = status === 'ACTIVE' ? 'activate' : 'deactivate';
+  return requestApi<InventoryConnectionSummary>(
+    `/api/v1/inventory/connections/${encodeURIComponent(connectionId)}/${action}`,
+    { method: 'POST' },
+  );
+}
+
+export function getVehicles(filters: VehicleSearchFilters): Promise<VehicleSearchResult> {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== null && value !== '') query.set(key, String(value));
+  }
+  return requestApi(`/api/v1/inventory/vehicles?${query.toString()}`);
+}
+
+export function getVehicle(vehicleId: string): Promise<VehicleDetails> {
+  return requestApi(`/api/v1/inventory/vehicles/${encodeURIComponent(vehicleId)}`);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

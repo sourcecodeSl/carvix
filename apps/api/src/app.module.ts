@@ -37,6 +37,10 @@ import {
 import { AuditController } from './modules/audit/audit.controller';
 import { AuditRepository } from './modules/audit/audit.repository';
 import { AuditService } from './modules/audit/audit.service';
+import { InventoryController } from './modules/inventory/inventory.controller';
+import { InventoryCredentialsService } from './modules/inventory/inventory.credentials';
+import { InventoryRepository } from './modules/inventory/inventory.repository';
+import { InventoryService } from './modules/inventory/inventory.service';
 
 @Module({
   imports: [
@@ -54,6 +58,7 @@ import { AuditService } from './modules/audit/audit.service';
     StaffInvitationController,
     PublicInvitationController,
     AuditController,
+    InventoryController,
   ],
   providers: [
     PrismaService,
@@ -82,6 +87,9 @@ import { AuditService } from './modules/audit/audit.service';
     LoginRateLimitService,
     AuditRepository,
     AuditService,
+    InventoryRepository,
+    InventoryCredentialsService,
+    InventoryService,
   ],
 })
 export class AppModule {}

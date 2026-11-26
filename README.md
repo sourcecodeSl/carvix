@@ -43,6 +43,13 @@ The config generator creates ignored local files with random credentials. The AP
 
 See [local setup](docs/development/local-setup.md) for database configuration and [Day 3 database archive and recovery](docs/development/day3-database-archive.md) for the preserved legacy database and backup.
 
+Day 7 inventory integration reads dealership MySQL data through SELECT-only accounts.
+Development connection tests are restricted to the isolated synthetic fixture at
+`127.0.0.1:3307`; production requires verified TLS, public destination validation, and
+deployment-level outbound network restrictions. See [MySQL inventory integration](docs/architecture/mysql-integration.md)
+for the destination policy, credential handling, revision-based test freshness, and
+explicit database integration test flags.
+
 ## Local URLs
 
 - Frontend: http://127.0.0.1:3000

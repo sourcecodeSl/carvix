@@ -17,6 +17,10 @@ export const environmentSchema = z.object({
     ),
   SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(720).default(24),
   LOGIN_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(100).default(5),
+  INVENTORY_CREDENTIAL_ENCRYPTION_KEY: z
+    .string()
+    .regex(/^[a-fA-F0-9]{64}$/, 'A 32-byte inventory credential encryption key is required')
+    .optional(),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;
@@ -27,6 +31,14 @@ export function validateEnvironment(config: Record<string, unknown>): Environmen
     throw new Error(`Invalid environment configuration: ${z.prettifyError(result.error)}`);
   }
   if (result.data.NODE_ENV === 'production') {
+    if (
+      !result.data.INVENTORY_CREDENTIAL_ENCRYPTION_KEY ||
+      !/^[a-fA-F0-9]{64}$/.test(result.data.INVENTORY_CREDENTIAL_ENCRYPTION_KEY)
+    ) {
+      throw new Error(
+        'Invalid environment configuration: A 32-byte inventory credential encryption key is required in production',
+      );
+    }
     const prohibitedUrls = [result.data.DATABASE_AUTH_URL, result.data.DATABASE_APP_URL];
     if (
       prohibitedUrls.some(

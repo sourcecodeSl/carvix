@@ -72,6 +72,17 @@ enum AuditEventOutcome {
   DENIED
 }
 
+enum InventoryConnectionStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ERROR
+}
+
+enum InventoryConnectorType {
+  MYSQL
+}
+
 model AuditEvent {
   id               String              @id @default(uuid()) @db.Uuid
   tenantId         String?             @map("tenant_id") @db.Uuid
@@ -112,6 +123,7 @@ model Tenant {
   memberships TenantMembership[]
   staffInvitations StaffInvitation[]
   auditEvents AuditEvent[]
+  inventoryConnections InventoryConnection[]
 
   @@map("tenants")
 }
@@ -178,6 +190,7 @@ model Dealership {
   updatedAt    DateTime @updatedAt @map("updated_at")
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   branches     Branch[]
+  inventoryConnections InventoryConnection[]
 
   @@unique([id, tenantId])
   @@index([tenantId])
@@ -291,4 +304,39 @@ model PlatformAdministrator {
 
   @@index([status])
   @@map("platform_administrators")
+}
+
+model InventoryConnection {
+  id                       String                    @id @default(uuid()) @db.Uuid
+  tenantId                 String                    @map("tenant_id") @db.Uuid
+  dealershipId             String                    @map("dealership_id") @db.Uuid
+  name                     String
+  connectorType            InventoryConnectorType    @default(MYSQL) @map("connector_type")
+  host                     String
+  port                     Int                       @default(3306)
+  databaseName             String                    @map("database_name")
+  username                 String
+  credentialCiphertext     String                    @map("credential_ciphertext")
+  credentialIv             String                    @map("credential_iv")
+  credentialTag            String                    @map("credential_tag")
+  credentialReference      String                    @map("credential_reference")
+  status                   InventoryConnectionStatus @default(DRAFT)
+  tlsEnabled               Boolean                   @default(true) @map("tls_enabled")
+  connectTimeoutMs         Int                       @default(5000) @map("connect_timeout_ms")
+  queryTimeoutMs           Int                       @default(5000) @map("query_timeout_ms")
+  lastTestedAt             DateTime?                 @map("last_tested_at")
+  lastSuccessfulConnectionAt DateTime?               @map("last_successful_connection_at")
+    configurationRevision    Int                       @default(1) @map("configuration_revision")
+    lastTestedRevision       Int?                      @map("last_tested_revision")
+  mapping                  Json?
+  createdAt                DateTime                  @default(now()) @map("created_at")
+  updatedAt                DateTime                  @updatedAt @map("updated_at")
+  tenant                   Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  dealership               Dealership                @relation(fields: [dealershipId, tenantId], references: [id, tenantId], onDelete: Restrict, map: "inventory_connections_dealership_tenant_id_fkey")
+
+  @@unique([dealershipId, name], map: "inventory_connections_dealership_name_key")
+  @@unique([dealershipId], map: "inventory_connections_dealership_id_key")
+  @@index([tenantId, status], map: "inventory_connections_tenant_status_idx")
+  @@index([dealershipId, status], map: "inventory_connections_dealership_status_idx")
+  @@map("inventory_connections")
 }

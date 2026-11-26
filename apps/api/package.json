@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@aicrm/database": "workspace:*",
+    "@aicrm/inventory-mysql": "workspace:*",
     "@aicrm/shared": "workspace:*",
     "@nestjs/common": "12.6.0",
     "@nestjs/config": "12.1.1",
