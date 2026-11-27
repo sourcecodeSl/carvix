@@ -411,6 +411,87 @@ describe.skipIf(!enabled)('inventory PostgreSQL tenant, RBAC, and audit integrat
     expect(tenantBConnections.body.map((item: { id: string }) => item.id)).toEqual([connectionBId]);
   });
 
+  it('rejects hosted PATCH requests in development and saves validated production settings as draft', async () => {
+    const login = await request(app!.getHttpServer())
+      .post('/api/v1/auth/login')
+      .set('Origin', apiOrigin)
+      .send({ email: `inventory-a-${suffix}@example.test`, password: testPassword })
+      .expect(200);
+    const cookies = login.headers['set-cookie'];
+    const cookie = (Array.isArray(cookies) ? cookies : [cookies])
+      .find((value) => value.startsWith('aicrm_session='))
+      ?.split(';')[0];
+    if (!cookie) throw new Error('Expected session cookie');
+    const path = `/api/v1/inventory/connections/${connectionAId}`;
+    const patch = () =>
+      request(app!.getHttpServer()).patch(path).set('Origin', apiOrigin).set('Cookie', cookie);
+    const row = () =>
+      owner!.inventoryConnection.findUniqueOrThrow({ where: { id: connectionAId } });
+    const before = await row();
+    const mapping = {
+      tableName: 'vehicles',
+      primaryKeyField: 'id',
+      idField: 'id',
+      makeField: 'make',
+      modelField: 'model',
+    };
+    const hosted = {
+      host: 'mysql.example.com',
+      port: 3306,
+      databaseName: 'main',
+      username: 'cloud_reader',
+      password: randomUUID(),
+      tlsEnabled: true,
+      tlsServername: null,
+      mapping,
+    };
+    const rejected = await patch().send(hosted).expect(400);
+    expect(rejected.body.message).toContain('accepts only the local MySQL fixture');
+    const afterRejection = await row();
+    expect(afterRejection.configurationRevision).toBe(before.configurationRevision);
+    expect(afterRejection.updatedAt).toEqual(before.updatedAt);
+    expect(afterRejection.host).toBe(before.host);
+
+    const config = app!.get(ConfigService);
+    config.set('NODE_ENV', 'production');
+    try {
+      await patch()
+        .send({ ...hosted, databaseName: 'invalid/name' })
+        .expect(400);
+      await patch()
+        .send({ ...hosted, tlsEnabled: false })
+        .expect(400);
+      const saved = await patch().send(hosted).expect(200);
+      expect(saved.body).toMatchObject({
+        host: hosted.host,
+        port: 3306,
+        databaseName: 'main',
+        username: 'cloud_reader',
+        tlsEnabled: true,
+        tlsServername: null,
+        status: 'DRAFT',
+      });
+      expect(saved.body).not.toHaveProperty('password');
+      expect(saved.body).not.toHaveProperty('credentialCiphertext');
+      const afterSave = await row();
+      expect(afterSave.configurationRevision).toBe(before.configurationRevision + 1);
+      expect(afterSave.lastTestedRevision).toBeNull();
+      expect(afterSave.lastSuccessfulConnectionAt).toBeNull();
+      expect(afterSave.credentialCiphertext !== hosted.password).toBe(true);
+      await patch()
+        .send({ mapping: { ...mapping, priceField: 'price_lkr' } })
+        .expect(200);
+      expect((await row()).credentialCiphertext === afterSave.credentialCiphertext).toBe(true);
+      await patch().send({ host: '93.184.216.34', tlsServername: 'mysql.example.com' }).expect(400);
+      const ip = await patch()
+        .send({ host: '93.184.216.34', tlsServername: 'mysql.example.com', password: randomUUID() })
+        .expect(200);
+      expect(ip.body.tlsServername).toBe('mysql.example.com');
+    } finally {
+      config.set('NODE_ENV', 'development');
+    }
+  });
+
   it.skipIf(!mysqlApiEnabled)(
     'tests connection setup, read-only MySQL access, activation, vehicle search, and details over HTTP',
     async () => {
@@ -446,6 +527,21 @@ describe.skipIf(!enabled)('inventory PostgreSQL tenant, RBAC, and audit integrat
         descriptionField: 'description',
         imageUrlField: 'image_urls',
       };
+      await request(app!.getHttpServer())
+        .post('/api/v1/inventory/connections')
+        .set('Cookie', cookie)
+        .set('Origin', apiOrigin)
+        .send({
+          name: 'Fixture TLS without certificate identity',
+          host: '127.0.0.1',
+          port: Number(process.env.INVENTORY_MYSQL_PORT ?? 3307),
+          databaseName: process.env.INVENTORY_MYSQL_DATABASE ?? 'carvix_inventory_fixture',
+          username: process.env.INVENTORY_MYSQL_USER ?? 'carvix_inventory_reader',
+          password,
+          tlsEnabled: true,
+          mapping,
+        })
+        .expect(400);
       const configuration = await request(app!.getHttpServer())
         .post('/api/v1/inventory/connections')
         .set('Cookie', cookie)
@@ -480,6 +576,11 @@ describe.skipIf(!enabled)('inventory PostgreSQL tenant, RBAC, and audit integrat
         .set('Cookie', cookie)
         .set('Origin', apiOrigin)
         .expect(503);
+      await request(app!.getHttpServer())
+        .post(`/api/v1/inventory/connections/${configuration.body.id}/activate`)
+        .set('Cookie', cookie)
+        .set('Origin', apiOrigin)
+        .expect(403);
       await request(app!.getHttpServer())
         .patch(`/api/v1/inventory/connections/${configuration.body.id}`)
         .set('Cookie', cookie)
@@ -610,6 +711,59 @@ describe.skipIf(!enabled)('inventory PostgreSQL tenant, RBAC, and audit integrat
       expect(secondPage.body.pageSize).toBe(2);
       expect(secondPage.body.items.length).toBeLessThanOrEqual(2);
 
+      const list = (query: Record<string, string | number> = {}) =>
+        request(app!.getHttpServer())
+          .get('/api/v1/inventory/vehicles')
+          .set('Cookie', cookie)
+          .query(query);
+      const all = await list({ q: '   ', sort: 'priceDesc' }).expect(200);
+      expect(all.body).toMatchObject({ total: 16, page: 1, pageSize: 20, totalPages: 1 });
+      expect(all.body.items).toHaveLength(16);
+      expect(all.body.items.at(-1)).toMatchObject({ id: 'SYN-MISSING-006', price: null });
+      expect(all.body.supportedFilters).toEqual(
+        expect.arrayContaining(['mileage', 'condition', 'bodyType']),
+      );
+
+      const combined = await list({
+        q: ' tOyOtA ',
+        make: 'Toyota',
+        model: 'Cor',
+        condition: 'Used',
+        bodyType: 'Sedan',
+        fuelType: 'Petrol',
+        transmission: 'Automatic',
+        availability: 'Available',
+        minPrice: '8950000.00',
+        maxPrice: '8950000.00',
+        minYear: 2022,
+        maxYear: 2022,
+        minMileage: 32000,
+        maxMileage: 32000,
+        sort: 'mileageAsc',
+      }).expect(200);
+      expect(combined.body.total).toBe(1);
+      expect(combined.body.items[0].id).toBe('SYN-TOY-001');
+      const idMatch = await list({ q: 'aqua-007' }).expect(200);
+      expect(idMatch.body.items[0].id).toBe('SYN-TOY-AQUA-007');
+
+      const empty = await list({ q: '%' }).expect(200);
+      expect(empty.body).toMatchObject({ total: 0, totalPages: 0, items: [] });
+      const beyond = await list({ page: 3, pageSize: 8 }).expect(200);
+      expect(beyond.body).toMatchObject({ total: 16, totalPages: 2, items: [] });
+      const tied = await list({ sort: 'yearDesc', pageSize: 1, page: 2 }).expect(200);
+      expect(tied.body.items[0].id).toBe('SYN-HON-002');
+
+      for (const invalid of [
+        { minPrice: '10', maxPrice: '5' },
+        { minYear: 2023, maxYear: 2020 },
+        { minMileage: 30000, maxMileage: 100 },
+        { minMileage: '0x10' },
+        { sort: 'invalid' },
+        { page: 0 },
+        { pageSize: 101 },
+      ])
+        await list(invalid as Record<string, string | number>).expect(400);
+
       const details = await request(app!.getHttpServer())
         .get('/api/v1/inventory/vehicles/SYN-TOY-001')
         .set('Cookie', cookie)
@@ -619,6 +773,28 @@ describe.skipIf(!enabled)('inventory PostgreSQL tenant, RBAC, and audit integrat
         make: 'Toyota',
         source: 'EXTERNAL_MYSQL',
       });
+
+      const connectionUrl = `/api/v1/inventory/connections/${configuration.body.id}`;
+      await request(app!.getHttpServer())
+        .patch(connectionUrl)
+        .set('Cookie', cookie)
+        .set('Origin', apiOrigin)
+        .send({ mapping: { ...mapping, mileageField: null, bodyTypeField: null } })
+        .expect(200);
+      for (const action of ['test', 'activate']) {
+        await request(app!.getHttpServer())
+          .post(`${connectionUrl}/${action}`)
+          .set('Cookie', cookie)
+          .set('Origin', apiOrigin)
+          .expect(201);
+      }
+      const partialMapping = await list({ q: 'missing-006' }).expect(200);
+      expect(partialMapping.body.supportedFilters).not.toContain('mileage');
+      expect(partialMapping.body.supportedFilters).not.toContain('bodyType');
+      expect(partialMapping.body.items[0].mileage).toBeNull();
+      await list({ minMileage: 0 }).expect(400);
+      await list({ sort: 'mileageAsc' }).expect(400);
+      await list({ bodyType: 'Sedan' }).expect(400);
 
       const events = await owner!.auditEvent.findMany({
         where: { tenantId: tenantAId, resourceId: configuration.body.id },

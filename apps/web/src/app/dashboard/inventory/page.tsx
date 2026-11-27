@@ -1,83 +1,140 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { PackageSearch } from 'lucide-react';
-import { Permission, type VehicleDetails, type VehicleSearchResult } from '@aicrm/shared';
-import { getVehicle, getVehicles } from '../../../lib/auth';
+import {
+  Permission,
+  vehicleSortOptions,
+  type VehicleFilterCapability,
+  type VehicleDetails,
+  type VehicleSearchFilters,
+  type VehicleSearchResult,
+} from '@aicrm/shared';
+import { ApiRequestError, getVehicle, getVehicles } from '../../../lib/auth';
 import { useDashboardSession } from '../../../components/dashboard-session';
+
+const filterFields = [
+  ['q', 'Search make, model, variant or vehicle ID'],
+  ['make', 'Make'],
+  ['model', 'Model'],
+  ['minPrice', 'Minimum price', 'price'],
+  ['maxPrice', 'Maximum price', 'price'],
+  ['minYear', 'Minimum year', 'year'],
+  ['maxYear', 'Maximum year', 'year'],
+  ['minMileage', 'Minimum mileage', 'mileage'],
+  ['maxMileage', 'Maximum mileage', 'mileage'],
+  ['fuelType', 'Fuel type', 'fuelType'],
+  ['transmission', 'Transmission', 'transmission'],
+  ['condition', 'Condition', 'condition'],
+  ['bodyType', 'Body type', 'bodyType'],
+  ['availability', 'Availability', 'availability'],
+] as const satisfies readonly (readonly [
+  keyof VehicleSearchFilters,
+  string,
+  VehicleFilterCapability?,
+])[];
+
+const sortLabels = {
+  newest: 'Default order',
+  priceAsc: 'Price: low to high',
+  priceDesc: 'Price: high to low',
+  yearAsc: 'Year: oldest first',
+  yearDesc: 'Year: newest first',
+  mileageAsc: 'Mileage: low to high',
+  mileageDesc: 'Mileage: high to low',
+  makeAsc: 'Make: A to Z',
+  makeDesc: 'Make: Z to A',
+};
 
 export default function InventoryPage() {
   const { user } = useDashboardSession();
   const canManage = user.permissions.includes(Permission.INVENTORY_INTEGRATION_MANAGE);
   const [result, setResult] = useState<VehicleSearchResult | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleDetails | null>(null);
-  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsLoadingId, setDetailsLoadingId] = useState<string | null>(null);
   const [detailsError, setDetailsError] = useState('');
+  const detailsRef = useRef<HTMLElement | null>(null);
+  const detailsLoading = detailsLoadingId !== null;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [page, setPage] = useState(1);
-  const [make, setMake] = useState('');
-  const [model, setModel] = useState('');
-  const [query, setQuery] = useState('');
-  const [fuelType, setFuelType] = useState('');
-  const [transmission, setTransmission] = useState('');
-  const [minPrice, setMinPrice] = useState('');
-  const [maxPrice, setMaxPrice] = useState('');
-  const [minYear, setMinYear] = useState('');
-  const [maxYear, setMaxYear] = useState('');
-  const [availability, setAvailability] = useState('');
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      setResult(
-        await getVehicles({
-          page,
-          pageSize: 20,
-          ...(query ? { q: query } : {}),
-          ...(make ? { make } : {}),
-          ...(model ? { model } : {}),
-          ...(fuelType ? { fuelType } : {}),
-          ...(transmission ? { transmission } : {}),
-          ...(minPrice ? { minPrice } : {}),
-          ...(maxPrice ? { maxPrice } : {}),
-          ...(minYear ? { minYear: Number(minYear) } : {}),
-          ...(maxYear ? { maxYear: Number(maxYear) } : {}),
-          ...(availability ? { availability } : {}),
-        }),
-      );
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Unable to load inventory.');
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    availability,
-    fuelType,
-    make,
-    maxPrice,
-    maxYear,
-    minPrice,
-    minYear,
-    model,
-    page,
-    query,
-    transmission,
-  ]);
+  const [applied, setApplied] = useState<URLSearchParams | null>(null);
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [capabilities, setCapabilities] = useState<VehicleSearchResult['supportedFilters']>([]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    function readLocation() {
+      const params = new URLSearchParams(window.location.search);
+      setDraft(Object.fromEntries(params));
+      setApplied(params);
+    }
+    readLocation();
+    window.addEventListener('popstate', readLocation);
+    return () => window.removeEventListener('popstate', readLocation);
+  }, []);
+
+  useEffect(() => {
+    if (!applied) return;
+    const request = new AbortController();
+    setLoading(true);
+    setError('');
+    setResult(null);
+    // Keep the URL's raw values so the API can validate malformed shared links.
+    const filters = new URLSearchParams();
+    for (const key of [...filterFields.map(([key]) => key), 'sort', 'page', 'pageSize']) {
+      for (const value of applied.getAll(key)) filters.append(key, value);
+    }
+    void getVehicles(filters, request.signal).then(
+      (response) => {
+        if (request.signal.aborted) return;
+        setResult(response);
+        setCapabilities(response.supportedFilters);
+        setLoading(false);
+      },
+      (cause: unknown) => {
+        if (request.signal.aborted) return;
+        setError(inventoryError(cause));
+        setLoading(false);
+      },
+    );
+    return () => {
+      request.abort();
+    };
+  }, [applied]);
+
+  function navigate(params: URLSearchParams) {
+    const query = params.toString();
+    window.history.pushState(null, '', query ? `?${query}` : window.location.pathname);
+    setApplied(params);
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setPage(1);
+    const params = new URLSearchParams(applied ?? undefined);
+    params.delete('page');
+    for (const [key] of filterFields) {
+      const value = draft[key]?.trim();
+      if (value) params.set(key, value);
+      else params.delete(key);
+    }
+    navigate(params);
   }
 
+  function changeOption(key: 'sort' | 'pageSize' | 'page', value: string) {
+    const params = new URLSearchParams(applied ?? undefined);
+    if (key !== 'page') params.delete('page');
+    params.set(key, value);
+    navigate(params);
+  }
+
+  useEffect(() => {
+    if (detailsLoading || detailsError || selectedVehicle) {
+      detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [detailsError, detailsLoading, selectedVehicle]);
+
   async function showDetails(vehicleId: string) {
-    setDetailsLoading(true);
+    setDetailsLoadingId(vehicleId);
     setDetailsError('');
     setSelectedVehicle(null);
     try {
@@ -85,11 +142,12 @@ export default function InventoryPage() {
     } catch (cause) {
       setDetailsError(cause instanceof Error ? cause.message : 'Unable to load vehicle details.');
     } finally {
-      setDetailsLoading(false);
+      setDetailsLoadingId(null);
     }
   }
 
-  const pageCount = Math.max(1, Math.ceil((result?.total ?? 0) / 20));
+  const page = result?.page ?? 1;
+  const pageCount = result?.totalPages ?? 0;
 
   return (
     <div className="space-y-7">
@@ -124,39 +182,100 @@ export default function InventoryPage() {
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-          <FilterInput label="Search make or model" value={query} onChange={setQuery} />
-          <FilterInput label="Make" value={make} onChange={setMake} />
-          <FilterInput label="Model" value={model} onChange={setModel} />
-          <FilterInput
-            label="Minimum price"
-            value={minPrice}
-            onChange={setMinPrice}
-            type="number"
-          />
-          <FilterInput
-            label="Maximum price"
-            value={maxPrice}
-            onChange={setMaxPrice}
-            type="number"
-          />
-          <FilterInput label="Availability" value={availability} onChange={setAvailability} />
-          <FilterInput label="Fuel type" value={fuelType} onChange={setFuelType} />
-          <FilterInput label="Transmission" value={transmission} onChange={setTransmission} />
-          <button
-            type="submit"
-            className="h-10 self-end rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white"
-          >
-            Apply
-          </button>
-          <FilterInput label="Minimum year" value={minYear} onChange={setMinYear} type="number" />
-          <FilterInput label="Maximum year" value={maxYear} onChange={setMaxYear} type="number" />
+          {filterFields.map(
+            ([key, label, capability]: readonly [string, string, VehicleFilterCapability?]) =>
+              (!capability || capabilities.includes(capability)) && (
+                <FilterInput
+                  key={key}
+                  label={label}
+                  value={draft[key] ?? ''}
+                  onChange={(value) => setDraft((previous) => ({ ...previous, [key]: value }))}
+                  type={key.startsWith('min') || key.startsWith('max') ? 'number' : 'text'}
+                  step={capability === 'price' ? '0.01' : '1'}
+                />
+              ),
+          )}
+          <div className="flex flex-wrap items-end gap-2 sm:col-span-2">
+            <button
+              type="submit"
+              className="h-10 rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white"
+            >
+              Apply search and filters
+            </button>
+            <button
+              type="button"
+              className="h-10 rounded-lg border px-3 text-sm"
+              onClick={() => {
+                setDraft((previous) => ({ ...previous, q: '' }));
+                const params = new URLSearchParams(applied ?? undefined);
+                params.delete('q');
+                params.delete('page');
+                navigate(params);
+              }}
+            >
+              Clear search
+            </button>
+            <button
+              type="button"
+              className="h-10 rounded-lg border px-3 text-sm"
+              onClick={() => {
+                setDraft({});
+                navigate(new URLSearchParams());
+              }}
+            >
+              Reset filters
+            </button>
+          </div>
         </form>
+
+        <div className="mt-5 flex flex-wrap gap-4 text-sm">
+          <label>
+            Sort by
+            <select
+              className="ml-2 rounded-lg border p-2"
+              value={applied?.get('sort') ?? 'newest'}
+              onChange={(event) => changeOption('sort', event.target.value)}
+            >
+              {vehicleSortOptions
+                .filter(
+                  (sort) =>
+                    (sort.startsWith('price') && capabilities.includes('price')) ||
+                    (sort.startsWith('year') && capabilities.includes('year')) ||
+                    (sort.startsWith('mileage') && capabilities.includes('mileage')) ||
+                    sort === 'newest' ||
+                    sort.startsWith('make'),
+                )
+                .map((sort) => (
+                  <option key={sort} value={sort}>
+                    {sortLabels[sort]}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label>
+            Page size
+            <select
+              className="ml-2 rounded-lg border p-2"
+              value={applied?.get('pageSize') ?? '20'}
+              onChange={(event) => changeOption('pageSize', event.target.value)}
+            >
+              {[10, 20, 50, 100].map((size) => (
+                <option key={size}>{size}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {result && (
+          <p role="status" className="mt-4 text-sm text-slate-600">
+            {result.total} matching vehicles
+          </p>
+        )}
 
         {loading ? (
           <p role="status" className="mt-5 animate-pulse text-sm text-slate-500">
             Loading inventory…
           </p>
-        ) : !result?.items.length ? (
+        ) : error ? null : !result?.items.length ? (
           <p className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
             No vehicle inventory records match these filters.
           </p>
@@ -178,12 +297,27 @@ export default function InventoryPage() {
                 <p className="mt-1 text-sm text-slate-600">
                   {vehicle.availabilityStatus ?? 'Availability not provided'}
                 </p>
+                <dl className="mt-2 space-y-1 text-sm text-slate-600">
+                  {(
+                    [
+                      ['Mileage', vehicle.mileage],
+                      ['Fuel type', vehicle.fuelType],
+                      ['Transmission', vehicle.transmission],
+                    ] as const
+                  ).map(([label, value]) => (
+                    <div key={label} className="flex gap-2">
+                      <dt>{label}</dt>
+                      <dd>{value ?? 'Not provided'}</dd>
+                    </div>
+                  ))}
+                </dl>
                 <button
                   type="button"
+                  disabled={detailsLoading}
                   onClick={() => void showDetails(vehicle.id)}
-                  className="mt-4 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold"
+                  className="mt-4 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold disabled:cursor-wait disabled:opacity-60"
                 >
-                  View vehicle details
+                  {detailsLoadingId === vehicle.id ? 'Loading details…' : 'View vehicle details'}
                 </button>
               </article>
             ))}
@@ -195,18 +329,18 @@ export default function InventoryPage() {
             <button
               type="button"
               disabled={page <= 1}
-              onClick={() => setPage((value) => value - 1)}
+              onClick={() => changeOption('page', String(page - 1))}
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-50"
             >
               Previous
             </button>
             <span className="text-sm text-slate-500">
-              Page {page} of {pageCount}
+              {pageCount ? `Page ${page} of ${pageCount}` : `Page ${page}`}
             </span>
             <button
               type="button"
               disabled={page >= pageCount}
-              onClick={() => setPage((value) => value + 1)}
+              onClick={() => changeOption('page', String(page + 1))}
               className="rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-50"
             >
               Next
@@ -217,7 +351,9 @@ export default function InventoryPage() {
 
       {(detailsLoading || detailsError || selectedVehicle) && (
         <section
-          className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+          ref={detailsRef}
+          tabIndex={-1}
+          className="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm focus:outline-none"
           aria-live="polite"
         >
           {detailsLoading && <p role="status">Loading vehicle details…</p>}
@@ -308,6 +444,16 @@ export default function InventoryPage() {
   );
 }
 
+function inventoryError(cause: unknown): string {
+  if (cause instanceof ApiRequestError) {
+    if (cause.status === 401) return 'Your session has expired. Sign in again to view inventory.';
+    if (cause.status === 403) return 'You do not have permission to view inventory.';
+    if (cause.status === 404 || cause.status === 503) return cause.message;
+    if (cause.status === 400) return cause.message;
+  }
+  return 'Unable to load inventory. Please try again.';
+}
+
 function isSafeHttpUrl(value: string): boolean {
   try {
     const url = new URL(value);
@@ -322,17 +468,21 @@ function FilterInput({
   value,
   onChange,
   type = 'text',
+  step,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: 'text' | 'number';
+  step?: string;
 }) {
   return (
     <label className="text-xs font-semibold text-slate-600">
       {label}
       <input
         type={type}
+        step={type === 'number' ? step : undefined}
+        min={type === 'number' ? 0 : undefined}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3 text-sm font-normal"

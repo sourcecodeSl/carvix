@@ -1,6 +1,7 @@
 import mysql, { type Pool, type PoolOptions, type RowDataPacket } from 'mysql2/promise';
 import { lookup as dnsLookup } from 'node:dns/promises';
 import { connect as netConnect, isIP } from 'node:net';
+import { domainToASCII } from 'node:url';
 
 export type MySQLConnectionConfiguration = {
   tenantId: string;
@@ -10,6 +11,7 @@ export type MySQLConnectionConfiguration = {
   username: string;
   password: string;
   tls: boolean;
+  tlsServername?: string | null;
   connectTimeoutMs: number;
 };
 
@@ -79,17 +81,42 @@ export type NormalizedVehicle = {
 export type InventoryMysqlVehicle = Record<string, unknown>;
 
 export type InventoryMysqlQueryOptions = {
+  enzonicSyntheticTest?: boolean;
   host: string;
   port: number;
   database: string;
   username: string;
   password: string;
   tls?: boolean;
+  tlsServername?: string | null;
   connectTimeoutMs?: number;
   queryTimeoutMs?: number;
   developmentFixture?: boolean;
   nodeEnv: 'development' | 'test' | 'production';
 };
+
+const enzonicSyntheticEndpoint = {
+  host: 'carvix-cloud-test-fwax1p.db.enzonic.com',
+  port: 3306,
+  database: 'main',
+  username: 'carvix_inventory_reader',
+};
+
+export function isEnzonicSyntheticEndpoint(
+  options: Pick<
+    InventoryMysqlQueryOptions,
+    'host' | 'port' | 'database' | 'username' | 'nodeEnv' | 'tls'
+  >,
+): boolean {
+  return (
+    options.nodeEnv === 'production' &&
+    options.tls === true &&
+    options.host === enzonicSyntheticEndpoint.host &&
+    options.port === enzonicSyntheticEndpoint.port &&
+    options.database === enzonicSyntheticEndpoint.database &&
+    options.username === enzonicSyntheticEndpoint.username
+  );
+}
 
 export type ResolvedInventoryAddress = { address: string; family: 4 | 6 };
 export type InventoryAddressLookup = (host: string) => Promise<ResolvedInventoryAddress[]>;
@@ -116,6 +143,8 @@ export class InventoryMysqlError extends Error {
     this.name = 'InventoryMysqlError';
   }
 }
+
+class InventoryHandshakeTimeout extends Error {}
 
 const identifierPattern = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
 const forbiddenOperations =
@@ -150,7 +179,13 @@ export function validateInventoryHost(
   nodeEnv: 'development' | 'test' | 'production',
   developmentFixture = false,
 ): void {
-  if (!host || host !== host.trim() || /[\s/:?#@]/.test(host) || host.length > 253) {
+  if (
+    !host ||
+    host !== host.trim() ||
+    /[\s/\\?#@%]/.test(host) ||
+    host.length > 253 ||
+    (host.includes(':') && (nodeEnv !== 'production' || isIP(host) !== 6))
+  ) {
     throw new InventoryMysqlError('INVALID_DESTINATION', 'Inventory host is invalid.');
   }
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
@@ -173,12 +208,53 @@ export function validateInventoryHost(
         'The inventory destination is not permitted.',
       );
     }
+    if (!addressFamily) resolveInventoryTlsServername(host);
   } else if (!developmentFixture || host !== '127.0.0.1' || port !== 3307) {
     throw new InventoryMysqlError(
       'FORBIDDEN_DESTINATION',
       'Development inventory connections require an approved local fixture destination.',
     );
   }
+}
+
+/**
+ * mysql2 skips its certificate identity check when its `host` is an IP literal.
+ * For IP destinations require an explicit DNS identity and pass that identity
+ * to mysql2 while the TCP stream remains pinned to the independently validated IP.
+ */
+export function resolveInventoryTlsServername(host: string, configured?: string | null): string {
+  const value = configured ?? (isIP(host) ? '' : host);
+  if (!value || value !== value.trim() || /[\s/\\:?#@%]/.test(value) || value.length > 253) {
+    throw new InventoryMysqlError(
+      'INVALID_DESTINATION',
+      'A valid TLS certificate hostname is required for this inventory destination.',
+    );
+  }
+  const ascii = domainToASCII(value).toLowerCase();
+  const labels = ascii.split('.');
+  if (
+    !ascii ||
+    ascii.length > 253 ||
+    labels.length < 2 ||
+    labels.some(
+      (label) =>
+        label.length < 1 || label.length > 63 || !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label),
+    ) ||
+    isIP(ascii) !== 0 ||
+    ascii === 'localhost' ||
+    ascii.endsWith('.internal') ||
+    ascii.endsWith('.localhost') ||
+    ascii.endsWith('.local')
+  ) {
+    throw new InventoryMysqlError(
+      'INVALID_DESTINATION',
+      'The TLS certificate hostname must be a public DNS name.',
+    );
+  }
+  if (!isIP(host) && ascii !== domainToASCII(host).toLowerCase()) {
+    throw new InventoryMysqlError('INVALID_DESTINATION', 'TLS must verify the inventory DNS host.');
+  }
+  return ascii;
 }
 
 /** Resolve once, reject every unsafe DNS answer, then pin the socket to a vetted IP. */
@@ -192,24 +268,29 @@ export async function resolveInventoryDestination(
       family: family as 4 | 6,
     })),
   developmentFixture = false,
+  timeoutMs = 5000,
 ): Promise<ResolvedInventoryAddress> {
   validateInventoryHost(host, port, nodeEnv, developmentFixture);
   const family = isIP(host);
-  const answers = family ? [{ address: host, family: family as 4 | 6 }] : await lookup(host);
+  const answers = family
+    ? [{ address: host, family }]
+    : await lookupWithTimeout(host, lookup, timeoutMs);
   if (!answers.length) {
     throw new InventoryMysqlError('INVALID_DESTINATION', 'The inventory host did not resolve.');
   }
 
   const normalizedHost = host.toLowerCase();
   for (const answer of answers) {
+    const familyMatches = isIP(answer.address) === answer.family;
     const permitted =
-      nodeEnv === 'production'
+      familyMatches &&
+      (nodeEnv === 'production'
         ? isPublicAddress(answer.address)
         : developmentFixture &&
           normalizedHost === '127.0.0.1' &&
           port === 3307 &&
           answer.address === '127.0.0.1' &&
-          answer.family === 4;
+          answer.family === 4);
     if (!permitted) {
       throw new InventoryMysqlError(
         'FORBIDDEN_DESTINATION',
@@ -218,6 +299,44 @@ export async function resolveInventoryDestination(
     }
   }
   return answers[0]!;
+}
+
+async function lookupWithTimeout(host: string, lookup: InventoryAddressLookup, timeoutMs: number) {
+  try {
+    return await withDeadline(
+      lookup(host),
+      timeoutMs,
+      new InventoryMysqlError('CONNECTION_TIMEOUT', 'Inventory DNS lookup timed out.'),
+    );
+  } catch (error) {
+    if (error instanceof InventoryMysqlError) throw error;
+    throw new InventoryMysqlError(
+      'INVALID_DESTINATION',
+      'The inventory host could not be resolved.',
+    );
+  }
+}
+
+async function withDeadline<T>(
+  operation: Promise<T>,
+  duration: number,
+  error: InventoryMysqlError,
+) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(error), duration);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
+function timeoutMs(value = 5000): number {
+  return Math.min(Math.max(Number.isFinite(value) ? value : 5000, 500), 30000);
 }
 
 const MAX_ACTIVE_CONNECTORS = 8;
@@ -309,6 +428,7 @@ function isPublicAddress(address: string): boolean {
       ['10.0.0.0', 8],
       ['100.64.0.0', 10],
       ['127.0.0.0', 8],
+      ['168.63.129.16', 32], // Azure platform virtual IP
       ['169.254.0.0', 16],
       ['172.16.0.0', 12],
       ['192.0.0.0', 24],
@@ -345,10 +465,11 @@ export class InventoryMysqlConnector {
   private readonly compatiblePool: {
     getConnection(): Promise<{
       query<T>(options: unknown): Promise<[T, unknown[]]>;
+      execute<T>(options: unknown): Promise<[T, unknown[]]>;
+      destroy(): void;
       release(): void;
     }>;
   };
-  private readOnlyVerified = false;
   private closed = false;
   private readonly releaseSlot: () => void;
 
@@ -371,8 +492,15 @@ export class InventoryMysqlConnector {
         'TLS is required for production inventory connections.',
       );
     }
+    const tlsServername = options.tls
+      ? resolveInventoryTlsServername(options.host, options.tlsServername)
+      : options.host;
+    const connectTimeout = timeoutMs(options.connectTimeoutMs);
+    const handshakes = new WeakMap<object, ReturnType<typeof setTimeout>>();
     const poolOptions = {
-      host: options.host,
+      // mysql2 uses host as the TLS SNI/certificate identity. TCP is opened by
+      // the custom stream below using only the previously vetted address.
+      host: tlsServername,
       port: options.port,
       database: options.database,
       user: options.username,
@@ -380,7 +508,8 @@ export class InventoryMysqlConnector {
       waitForConnections: true,
       connectionLimit: 5,
       queueLimit: 20,
-      connectTimeout: Math.min(Math.max(options.connectTimeoutMs ?? 5000, 500), 30000),
+      connectTimeout,
+      flags: ['-LOCAL_FILES'],
       enableKeepAlive: true,
       // mysql2 uses host for TLS certificate identity while this stream factory
       // pins the TCP socket to the address vetted before pool construction.
@@ -392,6 +521,12 @@ export class InventoryMysqlConnector {
         });
         socket.setNoDelay(true);
         socket.on('connect', () => socket.setKeepAlive(true));
+        // mysql2 clears its connect timer on the first packet, before TLS and authentication.
+        const deadline = setTimeout(() => {
+          socket.destroy(new InventoryHandshakeTimeout());
+        }, connectTimeout);
+        handshakes.set(socket, deadline);
+        socket.on('close', () => clearTimeout(deadline));
         return socket;
       },
       ...(options.tls
@@ -399,15 +534,27 @@ export class InventoryMysqlConnector {
             ssl: {
               rejectUnauthorized: true,
               verifyIdentity: true,
+              minVersion: 'TLSv1.2',
             },
           }
         : {}),
     };
     this.pool = mysql.createPool(poolOptions as PoolOptions);
+    this.pool.on('connection', (connection) => {
+      const socket = (connection as unknown as { stream: object }).stream;
+      const deadline = handshakes.get(socket);
+      if (deadline !== undefined) clearTimeout(deadline);
+    });
     this.compatiblePool = this.pool as unknown as typeof this.compatiblePool;
   }
 
   static async create(options: InventoryMysqlQueryOptions): Promise<InventoryMysqlConnector> {
+    if (options.enzonicSyntheticTest && !isEnzonicSyntheticEndpoint(options)) {
+      throw new InventoryMysqlError(
+        'FORBIDDEN_DESTINATION',
+        'The Enzonic synthetic test endpoint is not approved.',
+      );
+    }
     const releaseSlot = await acquireConnectorSlot();
     try {
       const destination = await resolveInventoryDestination(
@@ -416,6 +563,7 @@ export class InventoryMysqlConnector {
         options.nodeEnv,
         undefined,
         options.developmentFixture === true,
+        timeoutMs(options.connectTimeoutMs),
       );
       return new InventoryMysqlConnector(options, destination, releaseSlot);
     } catch (error) {
@@ -425,31 +573,103 @@ export class InventoryMysqlConnector {
   }
 
   async test(): Promise<InventoryMysqlTestResult> {
-    const connection = await this.compatiblePool.getConnection();
-    try {
-      await this.verifyReadOnly(connection);
-      await connection.query({ sql: 'SELECT 1 AS connected', timeout: 5000 });
-      return { connected: true, dialect: 'mysql', testedAt: new Date().toISOString() };
-    } catch (error) {
-      throw sanitizeMysqlError(error);
-    } finally {
-      connection.release();
-    }
+    await this.query('SELECT 1 AS connected');
+    return { connected: true, dialect: 'mysql', testedAt: new Date().toISOString() };
   }
 
   async query(sql: string, values: readonly unknown[] = []): Promise<RowDataPacket[]> {
+    this.validateRead(sql);
+    return this.withVerifiedConnection((connection) => this.executeRead(connection, sql, values));
+  }
+
+  async queryPage(
+    countSql: string,
+    listSql: string,
+    values: readonly unknown[],
+    pageSize: number,
+    offset: number,
+  ): Promise<{ countRows: RowDataPacket[]; rows: RowDataPacket[] }> {
+    this.validateRead(countSql);
+    this.validateRead(listSql);
+    return this.withVerifiedConnection(async (connection) => {
+      // Transaction controls are fixed internally. Both inventory statements are SELECTs.
+      try {
+        await this.queryDeadline(
+          connection.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ'),
+        );
+        await this.queryDeadline(connection.query('START TRANSACTION READ ONLY'));
+        const countRows = await this.executeRead(connection, countSql, values);
+        const rows =
+          Number(countRows[0]?.total ?? 0) > offset
+            ? await this.executeRead(connection, listSql, [...values, pageSize, offset])
+            : [];
+        await this.queryDeadline(connection.query('ROLLBACK'));
+        return { countRows, rows };
+      } catch (error) {
+        // Closing a failed session also discards its open transaction and session state.
+        connection.destroy();
+        throw error;
+      }
+    });
+  }
+
+  private validateRead(sql: string): void {
     assertSelectOnly(sql);
-    const connection = await this.compatiblePool.getConnection();
+    if (
+      this.options.enzonicSyntheticTest &&
+      sql !== 'SELECT 1 AS connected' &&
+      (!/^SELECT (?:`[A-Za-z_][A-Za-z0-9_]*`(?:, `[A-Za-z_][A-Za-z0-9_]*`)*|COUNT\(\*\) AS total) FROM `vehicles`(?: (?:WHERE|ORDER BY|LIMIT) |$)/.test(
+        sql,
+      ) ||
+        /\b(?:FROM|JOIN|UNION|INTERSECT|EXCEPT|SELECT)\b/i.test(
+          sql.replace(/^.*? FROM `vehicles`/, '').replace(/`[A-Za-z_][A-Za-z0-9_]*`/g, ''),
+        ))
+    ) {
+      throw new InventoryMysqlError(
+        'UNSUPPORTED_OPERATION',
+        'The Enzonic synthetic test can only query vehicles.',
+      );
+    }
+  }
+
+  private queryDeadline<T>(query: Promise<T>): Promise<T> {
+    return withDeadline(
+      query,
+      timeoutMs(this.options.queryTimeoutMs),
+      new InventoryMysqlError('QUERY_TIMEOUT', 'The inventory query timed out.'),
+    );
+  }
+
+  private async executeRead(
+    connection: Awaited<ReturnType<InventoryMysqlConnector['compatiblePool']['getConnection']>>,
+    sql: string,
+    values: readonly unknown[],
+  ): Promise<RowDataPacket[]> {
+    // mysql2 encodes JavaScript numbers as DOUBLE, which MySQL rejects for LIMIT/OFFSET.
+    const boundValues = values.map((value) =>
+      typeof value === 'number' && Number.isSafeInteger(value) ? String(value) : value,
+    );
+    const [rows] = await this.queryDeadline(
+      connection.execute<RowDataPacket[]>({ sql, values: boundValues }),
+    );
+    return rows;
+  }
+
+  private async withVerifiedConnection<T>(
+    read: (
+      connection: Awaited<ReturnType<InventoryMysqlConnector['compatiblePool']['getConnection']>>,
+    ) => Promise<T>,
+  ): Promise<T> {
+    const connection = await this.compatiblePool.getConnection().catch((error: unknown) => {
+      throw sanitizeMysqlError(error);
+    });
     try {
       await this.verifyReadOnly(connection);
-      const [rows] = await connection.query<RowDataPacket[]>({
-        sql,
-        timeout: Math.min(Math.max(this.options.queryTimeoutMs ?? 5000, 500), 30000),
-        values: [...values],
-      });
-      return rows;
+      return await read(connection);
     } catch (error) {
-      throw sanitizeMysqlError(error);
+      const sanitized = sanitizeMysqlError(error);
+      if (sanitized.code === 'QUERY_TIMEOUT') connection.destroy();
+      throw sanitized;
     } finally {
       connection.release();
     }
@@ -460,6 +680,8 @@ export class InventoryMysqlConnector {
     this.closed = true;
     try {
       await this.pool.end();
+    } catch (error) {
+      throw sanitizeMysqlError(error);
     } finally {
       this.releaseSlot();
     }
@@ -468,29 +690,60 @@ export class InventoryMysqlConnector {
   private async verifyReadOnly(connection: {
     query<T>(options: unknown): Promise<[T, unknown[]]>;
   }) {
-    if (this.readOnlyVerified) return;
     const [rows] = await connection.query<RowDataPacket[]>({
-      sql: 'SHOW GRANTS FOR CURRENT_USER()',
+      // The unqualified form also exposes mandatory roles for the current user.
+      sql: 'SHOW GRANTS',
       timeout: 5000,
     });
     const grants = rows.map((row) => String(Object.values(row)[0] ?? ''));
-    assertSelectOnlyGrants(grants, this.options.database);
-    this.readOnlyVerified = true;
+    assertSelectOnlyGrants(
+      grants,
+      this.options.database,
+      this.options.nodeEnv !== 'production',
+      this.options.enzonicSyntheticTest,
+    );
   }
 }
 
-export function assertSelectOnlyGrants(grants: readonly string[], database: string): void {
+export function assertSelectOnlyGrants(
+  grants: readonly string[],
+  database: string,
+  developmentFixture = false,
+  enzonicSyntheticTest = false,
+): void {
   validateSqlIdentifier(database);
+  const account = /(?:`(?:[^`]|``)+`|'(?:[^']|'')+')@(?:`(?:[^`]|``)+`|'(?:[^']|'')+')/;
+  const grantPattern = new RegExp(
+    '^GRANT (USAGE|SELECT) ON (\\*|`[^`]+`)\\.(\\*|`[A-Za-z_][A-Za-z0-9_]{0,63}`) TO ' +
+      account.source +
+      '$',
+  );
+  const schemaGrant = developmentFixture ? database : database.replaceAll('_', '\\_');
+  const approvedAccount =
+    /^(?:`carvix_inventory_reader`|'carvix_inventory_reader')@(?:`(?:[^`]|``)+`|'(?:[^']|'')+')$/;
+  let hasSelect = false;
   const allowed = grants.every((grant) => {
-    const normalized = grant.trim().replaceAll('`', '').replace(/\s+/g, ' ').toLowerCase();
-    return (
-      /^grant usage on \*\.\* to [^;]+$/.test(normalized) ||
-      new RegExp(
-        `^grant select on ${escapeRegExp(database.toLowerCase())}\\.(?:\\*|[a-z0-9_]+) to [^;]+$`,
-      ).test(normalized)
-    );
+    if (enzonicSyntheticTest && database === enzonicSyntheticEndpoint.database) {
+      const separator = grant.indexOf(' TO ');
+      if (separator < 0 || !approvedAccount.test(grant.slice(separator + 4))) return false;
+      const privileges = grant.slice(0, separator);
+      if (
+        privileges === 'GRANT SELECT, SHOW VIEW ON `main`.*' ||
+        privileges === 'GRANT SELECT ON `main`.`vehicles`'
+      ) {
+        hasSelect = true;
+        return true;
+      }
+      return privileges === 'GRANT USAGE ON *.*';
+    }
+    const match = grantPattern.exec(grant);
+    if (!match) return false;
+    const [, privilege, schema, object] = match;
+    if (privilege === 'USAGE') return schema === '*' && object === '*';
+    hasSelect = true;
+    return schema === `\`${object === '*' ? schemaGrant : database}\``;
   });
-  if (!grants.length || !allowed || !grants.some((grant) => /\bgrant select on\b/i.test(grant))) {
+  if (!allowed || !hasSelect) {
     throw new InventoryMysqlError(
       'UNSUPPORTED_OPERATION',
       'The inventory account must have SELECT-only access to the configured database.',
@@ -498,20 +751,16 @@ export function assertSelectOnlyGrants(grants: readonly string[], database: stri
   }
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 export function sanitizeMysqlError(error: unknown): InventoryMysqlError {
   if (error instanceof InventoryMysqlError) return error;
-  const record = error as { code?: string; errno?: number };
+  const record = (error ?? {}) as { code?: string };
   if (record.code === 'PROTOCOL_SEQUENCE_TIMEOUT' || record.code === 'ER_QUERY_TIMEOUT') {
     return new InventoryMysqlError('QUERY_TIMEOUT', 'The inventory query timed out.');
   }
-  if (record.code === 'ETIMEDOUT' || record.code === 'PROTOCOL_CONNECTION_LOST') {
+  if (error instanceof InventoryHandshakeTimeout || record.code === 'ETIMEDOUT') {
     return new InventoryMysqlError('CONNECTION_TIMEOUT', 'The inventory database timed out.');
   }
-  if (record.code === 'ER_PARSE_ERROR' || record.code === 'ER_BAD_FIELD_ERROR') {
+  if (['ER_PARSE_ERROR', 'ER_BAD_FIELD_ERROR', 'ER_NO_SUCH_TABLE'].includes(record.code ?? '')) {
     return new InventoryMysqlError(
       'INVALID_IDENTIFIER',
       'The inventory mapping could not be applied.',
@@ -524,6 +773,22 @@ export function sanitizeMysqlError(error: unknown): InventoryMysqlError {
     return new InventoryMysqlError(
       'CONNECTION_FAILED',
       'The inventory database credentials were rejected.',
+    );
+  }
+  if (record.code === 'HANDSHAKE_NO_SSL_SUPPORT') {
+    return new InventoryMysqlError(
+      'CONNECTION_FAILED',
+      'The inventory database does not support TLS.',
+    );
+  }
+  if (
+    /^(HANDSHAKE_SSL_ERROR$|ERR_TLS_|CERT_|UNABLE_TO_|DEPTH_ZERO_|SELF_SIGNED_)/.test(
+      record.code ?? '',
+    )
+  ) {
+    return new InventoryMysqlError(
+      'CONNECTION_FAILED',
+      'The inventory database TLS certificate could not be verified.',
     );
   }
   return new InventoryMysqlError('CONNECTION_FAILED', 'The inventory database is unavailable.');

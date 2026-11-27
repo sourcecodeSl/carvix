@@ -89,6 +89,7 @@ export class InventoryRepository {
           credentialTag: data.credentialTag,
           credentialReference: data.credentialReference,
           ...(data.tlsEnabled !== undefined ? { tlsEnabled: data.tlsEnabled } : {}),
+          ...(data.tlsServername !== undefined ? { tlsServername: data.tlsServername } : {}),
           ...(data.mapping !== undefined ? { mapping: data.mapping } : {}),
           status: 'DRAFT',
           lastTestedAt: null,
@@ -117,6 +118,7 @@ export class InventoryRepository {
                   ? ['credentials']
                   : []),
                 ...(prior.tlsEnabled !== data.tlsEnabled ? ['tlsEnabled'] : []),
+                ...(prior.tlsServername !== data.tlsServername ? ['tlsServername'] : []),
                 ...(JSON.stringify(prior.mapping) !== JSON.stringify(data.mapping)
                   ? ['mapping']
                   : []),

@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import type { InventoryConnectionSummary, InventoryMappingConfiguration } from '@aicrm/shared';
 import {
   ApiRequestError,
@@ -52,8 +52,9 @@ export default function InventorySettingsPage() {
   const [port, setPort] = useState('3306');
   const [databaseName, setDatabaseName] = useState('');
   const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const passwordInput = useRef<HTMLInputElement>(null);
   const [tlsEnabled, setTlsEnabled] = useState(true);
+  const [tlsServername, setTlsServername] = useState('');
   const [mapping, setMapping] = useState<InventoryMappingConfiguration>(blankMapping);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -79,6 +80,7 @@ export default function InventorySettingsPage() {
         setDatabaseName(first.databaseName);
         setUsername(first.username);
         setTlsEnabled(first.tlsEnabled);
+        setTlsServername(first.tlsServername ?? '');
         setMapping(first.mapping ?? blankMapping);
       }
     } catch (cause) {
@@ -98,6 +100,8 @@ export default function InventorySettingsPage() {
     setError('');
     setNotice('');
     try {
+      const password = passwordInput.current?.value ?? '';
+      if (passwordInput.current) passwordInput.current.value = '';
       const values = {
         name: connection?.name ?? 'Primary inventory',
         host,
@@ -106,13 +110,13 @@ export default function InventorySettingsPage() {
         username,
         ...(password ? { password } : {}),
         tlsEnabled,
+        tlsServername: tlsServername.trim() || null,
         mapping,
       };
       const saved = connection
         ? await updateInventoryConnection(connection.id, values)
         : await createInventoryConnection(values);
       setConnection(saved);
-      setPassword('');
       setNotice('Inventory connection configuration saved as draft.');
       await load();
     } catch (cause) {
@@ -212,12 +216,15 @@ export default function InventorySettingsPage() {
             <TextField label="Port" value={port} onChange={setPort} type="number" />
             <TextField label="Database name" value={databaseName} onChange={setDatabaseName} />
             <TextField label="Username" value={username} onChange={setUsername} />
-            <TextField
-              label={connection ? 'Password (leave blank to keep existing)' : 'Password'}
-              value={password}
-              onChange={setPassword}
-              type="password"
-            />
+            <label className="text-sm font-semibold text-slate-700">
+              {connection ? 'Password (leave blank to keep existing)' : 'Password'}
+              <input
+                ref={passwordInput}
+                type="password"
+                autoComplete="new-password"
+                className="mt-1 h-10 w-full rounded-lg border border-slate-300 px-3 font-normal"
+              />
+            </label>
             <label className="flex h-10 items-end gap-2 text-sm font-semibold text-slate-700">
               <input
                 type="checkbox"
@@ -226,7 +233,16 @@ export default function InventorySettingsPage() {
               />
               Require TLS
             </label>
+            <TextField
+              label="TLS certificate hostname (for IP hosts)"
+              value={tlsServername}
+              onChange={setTlsServername}
+            />
           </div>
+          <p className="mt-2 text-xs text-slate-500">
+            Leave blank for DNS hosts. For a public IP address, enter the DNS name on the database
+            certificate; certificate verification stays enabled.
+          </p>
 
           <h2 className="mt-6 text-lg font-semibold text-slate-950">Schema mapping</h2>
           <div className="mt-3 grid gap-4 md:grid-cols-2">
@@ -342,7 +358,7 @@ function TextField({
   label: string;
   value: string;
   onChange: (value: string) => void;
-  type?: 'text' | 'password' | 'number';
+  type?: 'text' | 'number';
 }) {
   return (
     <label className="text-sm font-semibold text-slate-700">

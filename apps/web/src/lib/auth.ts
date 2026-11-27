@@ -314,12 +314,17 @@ export function setInventoryConnectionStatus(connectionId: string, status: 'ACTI
   );
 }
 
-export function getVehicles(filters: VehicleSearchFilters): Promise<VehicleSearchResult> {
-  const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(filters)) {
-    if (value !== undefined && value !== null && value !== '') query.set(key, String(value));
+export function getVehicles(
+  filters: VehicleSearchFilters | URLSearchParams,
+  signal?: AbortSignal,
+): Promise<VehicleSearchResult> {
+  const query = filters instanceof URLSearchParams ? filters : new URLSearchParams();
+  if (!(filters instanceof URLSearchParams)) {
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== undefined && value !== null && value !== '') query.set(key, String(value));
+    }
   }
-  return requestApi(`/api/v1/inventory/vehicles?${query.toString()}`);
+  return requestApi(`/api/v1/inventory/vehicles?${query.toString()}`, { signal: signal ?? null });
 }
 
 export function getVehicle(vehicleId: string): Promise<VehicleDetails> {

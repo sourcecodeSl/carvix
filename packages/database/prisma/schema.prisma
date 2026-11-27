@@ -322,6 +322,7 @@ model InventoryConnection {
   credentialReference      String                    @map("credential_reference")
   status                   InventoryConnectionStatus @default(DRAFT)
   tlsEnabled               Boolean                   @default(true) @map("tls_enabled")
+  tlsServername            String?                   @map("tls_servername") @db.VarChar(253)
   connectTimeoutMs         Int                       @default(5000) @map("connect_timeout_ms")
   queryTimeoutMs           Int                       @default(5000) @map("query_timeout_ms")
   lastTestedAt             DateTime?                 @map("last_tested_at")

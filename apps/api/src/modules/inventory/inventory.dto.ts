@@ -1,10 +1,13 @@
-import { Type } from 'class-transformer';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { vehicleSortOptions, type VehicleSort } from '@aicrm/shared';
+import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsInt,
   IsIn,
   IsOptional,
   IsString,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -177,6 +180,11 @@ export class CreateInventoryConnectionDto {
   @IsBoolean()
   tlsEnabled = true;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(253)
+  tlsServername?: string;
+
   @ValidateNested()
   @Type(() => InventoryMappingDto)
   mapping!: InventoryMappingDto;
@@ -223,79 +231,134 @@ export class UpdateInventoryConnectionDto {
   tlsEnabled?: boolean;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(253)
+  tlsServername?: string;
+
+  @IsOptional()
   @ValidateNested()
   @Type(() => InventoryMappingDto)
   mapping?: InventoryMappingDto;
 }
 
+function parseQueryInteger({ value }: { value: unknown }): unknown {
+  return typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value;
+}
+
 export class ListVehiclesDto {
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() || undefined : value,
+  )
   @IsString()
   @MaxLength(100)
+  @ApiPropertyOptional()
   q?: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(64)
+  @ApiPropertyOptional()
   make?: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(64)
+  @ApiPropertyOptional()
   model?: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(32)
+  @Matches(/^\d+(?:\.\d{1,2})?$/)
+  @ApiPropertyOptional()
   minPrice?: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(32)
+  @Matches(/^\d+(?:\.\d{1,2})?$/)
+  @ApiPropertyOptional()
   maxPrice?: string;
 
   @IsOptional()
-  @Type(() => Number)
+  @Transform(parseQueryInteger)
   @IsInt()
   @Min(1886)
   @Max(2100)
+  @ApiPropertyOptional()
   minYear?: number;
 
   @IsOptional()
-  @Type(() => Number)
+  @Transform(parseQueryInteger)
   @IsInt()
   @Min(1886)
   @Max(2100)
+  @ApiPropertyOptional()
   maxYear?: number;
 
   @IsOptional()
   @IsString()
   @MaxLength(64)
+  @ApiPropertyOptional()
   fuelType?: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(64)
+  @ApiPropertyOptional()
   transmission?: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(64)
+  @ApiPropertyOptional()
   availability?: string;
 
   @IsOptional()
-  @IsIn(['newest', 'priceAsc', 'priceDesc', 'yearDesc'])
-  sort?: 'newest' | 'priceAsc' | 'priceDesc' | 'yearDesc';
+  @Transform(parseQueryInteger)
+  @IsInt()
+  @Min(0)
+  @Max(Number.MAX_SAFE_INTEGER)
+  @ApiPropertyOptional()
+  minMileage?: number;
 
-  @Type(() => Number)
+  @IsOptional()
+  @Transform(parseQueryInteger)
+  @IsInt()
+  @Min(0)
+  @Max(Number.MAX_SAFE_INTEGER)
+  @ApiPropertyOptional()
+  maxMileage?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  @ApiPropertyOptional()
+  condition?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  @ApiPropertyOptional()
+  bodyType?: string;
+
+  @IsOptional()
+  @IsIn(vehicleSortOptions)
+  @ApiPropertyOptional({ enum: vehicleSortOptions })
+  sort?: VehicleSort;
+
+  @Transform(parseQueryInteger)
   @IsInt()
   @Min(1)
   @Max(10000)
-  page = 1;
+  @ApiPropertyOptional({ default: 1, minimum: 1, maximum: 10000 })
+  page: number = 1;
 
-  @Type(() => Number)
+  @Transform(parseQueryInteger)
   @IsInt()
   @Min(1)
   @Max(100)
-  pageSize = 20;
+  @ApiPropertyOptional({ default: 20, minimum: 1, maximum: 100 })
+  pageSize: number = 20;
 }

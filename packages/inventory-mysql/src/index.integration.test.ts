@@ -20,11 +20,12 @@ describe.skipIf(!enabled)('MySQL inventory fixture integration', () => {
     try {
       await expect(connector.test()).resolves.toMatchObject({ connected: true, dialect: 'mysql' });
       const rows = await connector.query(
-        'SELECT id, price_lkr FROM vehicles ORDER BY id LIMIT ?',
-        [6],
+        'SELECT id, price_lkr FROM vehicles WHERE price_lkr IS NULL ORDER BY id LIMIT ?',
+        [1],
       );
-      expect(rows.length).toBeGreaterThan(0);
-      expect(rows.some((row) => row.price_lkr === null)).toBe(true);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.id).toBe('SYN-MISSING-006');
+      expect(rows[0]?.price_lkr).toBeNull();
       await expect(
         connector.query('UPDATE vehicles SET make = ? WHERE id = ?', ['fake', 'SYN-TOY-001']),
       ).rejects.toMatchObject({ code: 'UNSUPPORTED_OPERATION' });

@@ -1,8 +1,32 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getDealerships, updateBranchStatus } from './auth';
+import { getDealerships, getVehicles, updateBranchStatus } from './auth';
 
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+describe('inventory API requests', () => {
+  it('sends the shared query and abort signal with the session', async () => {
+    const signal = new AbortController().signal;
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify({ items: [], totalPages: 0 })));
+    const query = new URLSearchParams({
+      q: 'Toyota & Honda',
+      minMileage: '0',
+      sort: 'priceAsc',
+      page: '2',
+    });
+
+    await getVehicles(query, signal);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /\/api\/v1\/inventory\/vehicles\?q=Toyota\+%26\+Honda&minMileage=0&sort=priceAsc&page=2$/,
+      ),
+      expect.objectContaining({ credentials: 'include', signal }),
+    );
+  });
 });
 
 describe('management API requests', () => {

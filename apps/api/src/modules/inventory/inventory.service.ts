@@ -7,16 +7,21 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { isIP } from 'node:net';
 import type {
   InventoryConnectionSummary,
   InventoryMappingConfiguration,
   VehicleSearchResult,
+  VehicleSort,
+  VehicleFilterCapability,
   TenantContext,
 } from '@aicrm/shared';
 import {
   InventoryMysqlConnector,
   InventoryMysqlError,
+  isEnzonicSyntheticEndpoint,
   quoteSqlIdentifier,
+  resolveInventoryTlsServername,
   validateInventoryHost,
   validateSqlIdentifier,
 } from '@aicrm/inventory-mysql';
@@ -134,30 +139,62 @@ export class InventoryService {
       );
     }
 
-    validateInventoryHost(
-      host,
-      port,
-      this.config.getOrThrow<'development' | 'test' | 'production'>('NODE_ENV'),
-      this.config.getOrThrow<string>('NODE_ENV') !== 'production',
-    );
+    const nodeEnv = this.config.getOrThrow<'development' | 'test' | 'production'>('NODE_ENV');
     if (
-      this.config.getOrThrow<string>('NODE_ENV') !== 'production' &&
+      nodeEnv !== 'production' &&
       (host !== '127.0.0.1' || port !== 3307 || databaseName !== 'carvix_inventory_fixture')
     ) {
-      throw new BadRequestException('Development inventory is limited to the synthetic fixture.');
+      throw new BadRequestException(
+        'This API runs in development or test mode and accepts only the local MySQL fixture. Use a production-mode API for hosted MySQL.',
+      );
     }
-    validateSqlIdentifier(databaseName);
+    try {
+      validateInventoryHost(host, port, nodeEnv, nodeEnv !== 'production');
+      validateSqlIdentifier(databaseName);
+    } catch (error) {
+      if (error instanceof InventoryMysqlError) throw new BadRequestException(error.message);
+      throw error;
+    }
     this.validateMapping(mapping);
-    const nodeEnv = this.config.getOrThrow<'development' | 'test' | 'production'>('NODE_ENV');
     const tlsEnabled = dto.tlsEnabled ?? existing?.tlsEnabled ?? true;
     if (nodeEnv === 'production' && !tlsEnabled) {
       throw new BadRequestException('TLS is required for production inventory connections.');
+    }
+    let tlsServername: string | null = null;
+    if (tlsEnabled) {
+      try {
+        const certificateHostname = resolveInventoryTlsServername(
+          host,
+          dto.tlsServername !== undefined
+            ? dto.tlsServername
+            : host === existing?.host
+              ? existing.tlsServername
+              : null,
+        );
+        // DNS endpoints derive their TLS identity from the host during every connection.
+        tlsServername = isIP(host) ? certificateHostname : null;
+      } catch {
+        throw new BadRequestException(
+          'A valid DNS name on the MySQL TLS certificate is required for this destination.',
+        );
+      }
     }
 
     let encrypted;
     if (dto.password) {
       encrypted = this.credentials.encrypt(dto.password);
     } else if (existing) {
+      if (
+        nodeEnv === 'production' &&
+        (host !== existing.host ||
+          port !== existing.port ||
+          username !== existing.username ||
+          (isIP(host) !== 0 && tlsServername !== existing.tlsServername))
+      ) {
+        throw new BadRequestException(
+          'Re-enter the password when changing the inventory endpoint or username.',
+        );
+      }
       encrypted = {
         ciphertext: existing.credentialCiphertext,
         iv: existing.credentialIv,
@@ -179,6 +216,7 @@ export class InventoryService {
       credentialTag: encrypted.tag,
       credentialReference: encrypted.reference,
       tlsEnabled,
+      tlsServername,
       mapping: mapping as Prisma.InputJsonValue,
       status: 'DRAFT',
     });
@@ -216,12 +254,14 @@ export class InventoryService {
       const mapping = connection.mapping as InventoryMappingConfiguration;
       this.validateMapping(mapping);
       const connector = await InventoryMysqlConnector.create({
+        enzonicSyntheticTest: this.allowEnzonicSyntheticTest(connection, mapping),
         host: connection.host,
         port: connection.port,
         database: connection.databaseName,
         username: connection.username,
         password,
         tls: connection.tlsEnabled,
+        tlsServername: connection.tlsServername,
         connectTimeoutMs: connection.connectTimeoutMs,
         queryTimeoutMs: connection.queryTimeoutMs,
         developmentFixture: this.config.getOrThrow<string>('NODE_ENV') !== 'production',
@@ -297,21 +337,40 @@ export class InventoryService {
     );
     const mapping = connection.mapping as InventoryMappingConfiguration;
     this.validateMapping(mapping);
+    const { countSql, listSql, values, supportedFilters } = this.vehicleQuery(mapping, filters);
     let connector: InventoryMysqlConnector | undefined;
     try {
       connector = await InventoryMysqlConnector.create({
+        enzonicSyntheticTest: this.allowEnzonicSyntheticTest(connection, mapping),
         host: connection.host,
         port: connection.port,
         database: connection.databaseName,
         username: connection.username,
         password,
         tls: connection.tlsEnabled,
+        tlsServername: connection.tlsServername,
         connectTimeoutMs: connection.connectTimeoutMs,
         queryTimeoutMs: connection.queryTimeoutMs,
         developmentFixture: this.config.getOrThrow<string>('NODE_ENV') !== 'production',
         nodeEnv: this.config.getOrThrow<'development' | 'test' | 'production'>('NODE_ENV'),
       });
-      return await this.queryVehicles(connector, connection, mapping, filters);
+      const offset = (filters.page - 1) * filters.pageSize;
+      const { countRows, rows } = await connector.queryPage(
+        countSql,
+        listSql,
+        values,
+        filters.pageSize,
+        offset,
+      );
+      const total = Number(countRows[0]?.total ?? 0);
+      return {
+        items: rows.map((row) => this.normalizeVehicle(connection, mapping, row)),
+        total,
+        totalPages: Math.ceil(total / filters.pageSize),
+        supportedFilters,
+        page: filters.page,
+        pageSize: filters.pageSize,
+      };
     } catch (error) {
       if (error instanceof InventoryMysqlError) {
         throw new ServiceUnavailableException(error.message);
@@ -337,12 +396,14 @@ export class InventoryService {
     let connector: InventoryMysqlConnector | undefined;
     try {
       connector = await InventoryMysqlConnector.create({
+        enzonicSyntheticTest: this.allowEnzonicSyntheticTest(connection, mapping),
         host: connection.host,
         port: connection.port,
         database: connection.databaseName,
         username: connection.username,
         password,
         tls: connection.tlsEnabled,
+        tlsServername: connection.tlsServername,
         connectTimeoutMs: connection.connectTimeoutMs,
         queryTimeoutMs: connection.queryTimeoutMs,
         developmentFixture: this.config.getOrThrow<string>('NODE_ENV') !== 'production',
@@ -368,6 +429,36 @@ export class InventoryService {
     } finally {
       await connector?.close();
     }
+  }
+
+  private allowEnzonicSyntheticTest(
+    connection: {
+      id: string;
+      tenantId: string;
+      host: string;
+      port: number;
+      databaseName: string;
+      username: string;
+      tlsEnabled: boolean;
+    },
+    mapping: InventoryMappingConfiguration,
+  ): boolean {
+    return (
+      this.config.get('INVENTORY_ENZONIC_SYNTHETIC_TEST') === 'true' &&
+      this.config.get('API_PORT') === 3002 &&
+      this.config.get('API_BIND_HOST') === '127.0.0.1' &&
+      connection.tenantId === 'a77ec22e-0c0a-4d35-9441-fc319c45865e' &&
+      connection.id === '4f38841e-18ed-4e43-b751-b3b1e480bde5' &&
+      mapping.tableName === 'vehicles' &&
+      isEnzonicSyntheticEndpoint({
+        host: connection.host,
+        port: connection.port,
+        database: connection.databaseName,
+        username: connection.username,
+        tls: connection.tlsEnabled,
+        nodeEnv: this.config.getOrThrow<'development' | 'test' | 'production'>('NODE_ENV'),
+      })
+    );
   }
 
   private async requireActiveConnection(context: TenantContext) {
@@ -419,112 +510,123 @@ export class InventoryService {
     return [...new Set(names)].map(quoteSqlIdentifier);
   }
 
-  private async queryVehicles(
-    connector: Pick<InventoryMysqlConnector, 'query'>,
-    connection: { dealershipId: string },
-    mapping: InventoryMappingConfiguration,
-    filters: ListVehiclesDto,
-  ): Promise<VehicleSearchResult> {
+  private vehicleQuery(mapping: InventoryMappingConfiguration, filters: ListVehiclesDto) {
     const table = quoteSqlIdentifier(mapping.tableName);
     const conditions: string[] = [];
     const values: unknown[] = [];
-    const addText = (field: string | null, value: string | undefined) => {
-      if (field && value) {
-        conditions.push(`${quoteSqlIdentifier(field)} LIKE ?`);
-        values.push(`%${value.trim()}%`);
-      }
+    const rangeFields = {
+      price: mapping.priceField,
+      year: mapping.yearField,
+      mileage: mapping.mileageField,
     };
-    addText(mapping.makeField, filters.make);
-    addText(mapping.modelField, filters.model);
-    if (filters.fuelType && !mapping.fuelTypeField) {
-      throw new BadRequestException(
-        'Fuel type filtering is unsupported by this inventory mapping.',
+    const textFields = {
+      fuelType: mapping.fuelTypeField,
+      transmission: mapping.transmissionField,
+      availability: mapping.availabilityField,
+      condition: mapping.conditionField,
+      bodyType: mapping.bodyTypeField,
+    };
+    const capabilityFields: Record<VehicleFilterCapability, string | null> = {
+      ...rangeFields,
+      ...textFields,
+    };
+    const supportedFilters = (Object.keys(capabilityFields) as VehicleFilterCapability[]).filter(
+      (key) => Boolean(capabilityFields[key]),
+    );
+    const addText = (label: string, field: string | null, input: string | undefined) => {
+      const value = input?.trim();
+      if (!value) return;
+      if (!field)
+        throw new BadRequestException(
+          `Filtering by ${label} is unsupported by this inventory mapping.`,
+        );
+      const column = quoteSqlIdentifier(field);
+      if (label === 'availability') {
+        conditions.push(`${column} = ?`);
+        values.push(value);
+        return;
+      }
+      conditions.push(`${column} LIKE ? ESCAPE '!'`);
+      values.push(inventoryPattern(value));
+    };
+    addText('make', mapping.makeField, filters.make);
+    addText('model', mapping.modelField, filters.model);
+    for (const key of Object.keys(textFields) as (keyof typeof textFields)[]) {
+      addText(key, textFields[key], filters[key]);
+    }
+    const search = filters.q?.trim();
+    if (search) {
+      const searchable = [
+        ...new Set(
+          [mapping.makeField, mapping.modelField, mapping.variantField, mapping.idField].filter(
+            (field): field is string => Boolean(field),
+          ),
+        ),
+      ];
+      conditions.push(
+        `(${searchable.map((field) => `${quoteSqlIdentifier(field)} LIKE ? ESCAPE '!'`).join(' OR ')})`,
       );
-    }
-    addText(mapping.fuelTypeField, filters.fuelType);
-    if (filters.transmission && !mapping.transmissionField) {
-      throw new BadRequestException(
-        'Transmission filtering is unsupported by this inventory mapping.',
-      );
-    }
-    addText(mapping.transmissionField, filters.transmission);
-    if (filters.availability && !mapping.availabilityField) {
-      throw new BadRequestException(
-        'Availability filtering is unsupported by this inventory mapping.',
-      );
-    }
-    addText(mapping.availabilityField, filters.availability);
-    if (filters.q) {
-      const searchable = [mapping.makeField, mapping.modelField].map(quoteSqlIdentifier);
-      conditions.push(`(${searchable.map((field) => `${field} LIKE ?`).join(' OR ')})`);
-      for (let index = 0; index < searchable.length; index++) values.push(`%${filters.q}%`);
-    }
-    if (mapping.priceField) {
-      if (filters.minPrice) {
-        if (!/^\d+(?:\.\d{1,2})?$/.test(filters.minPrice)) {
-          throw new BadRequestException('Minimum price is invalid.');
-        }
-        conditions.push(`${quoteSqlIdentifier(mapping.priceField)} >= ?`);
-        values.push(filters.minPrice);
-      }
-      if (filters.maxPrice) {
-        if (!/^\d+(?:\.\d{1,2})?$/.test(filters.maxPrice)) {
-          throw new BadRequestException('Maximum price is invalid.');
-        }
-        conditions.push(`${quoteSqlIdentifier(mapping.priceField)} <= ?`);
-        values.push(filters.maxPrice);
-      }
-    } else if (filters.minPrice || filters.maxPrice) {
-      throw new BadRequestException('Price filtering is unsupported by this inventory mapping.');
-    }
-    if (mapping.yearField) {
-      if (filters.minYear) {
-        conditions.push(`${quoteSqlIdentifier(mapping.yearField)} >= ?`);
-        values.push(filters.minYear);
-      }
-      if (filters.maxYear) {
-        conditions.push(`${quoteSqlIdentifier(mapping.yearField)} <= ?`);
-        values.push(filters.maxYear);
-      }
-    } else if (filters.minYear || filters.maxYear) {
-      throw new BadRequestException('Year filtering is unsupported by this inventory mapping.');
+      values.push(...searchable.map(() => inventoryPattern(search)));
     }
 
-    const where = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '';
-    const countRows = await connector.query(
-      `SELECT COUNT(*) AS total FROM ${table}${where}`,
-      values,
-    );
-    const total = Number((countRows[0]?.total as number) ?? 0);
-    const sortMap: Record<string, string> = {
-      newest: mapping.yearField
-        ? `${quoteSqlIdentifier(mapping.yearField)} DESC`
-        : `${quoteSqlIdentifier(mapping.primaryKeyField)} DESC`,
-      priceAsc: mapping.priceField
-        ? `${quoteSqlIdentifier(mapping.priceField)} ASC`
-        : `${quoteSqlIdentifier(mapping.primaryKeyField)} ASC`,
-      priceDesc: mapping.priceField
-        ? `${quoteSqlIdentifier(mapping.priceField)} DESC`
-        : `${quoteSqlIdentifier(mapping.primaryKeyField)} DESC`,
-      yearDesc: mapping.yearField
-        ? `${quoteSqlIdentifier(mapping.yearField)} DESC`
-        : `${quoteSqlIdentifier(mapping.primaryKeyField)} DESC`,
-    };
-    if ((filters.sort === 'priceAsc' || filters.sort === 'priceDesc') && !mapping.priceField) {
-      throw new BadRequestException('Price sorting is unsupported by this inventory mapping.');
+    const ranges = [
+      ['price', filters.minPrice, filters.maxPrice],
+      ['year', filters.minYear, filters.maxYear],
+      ['mileage', filters.minMileage, filters.maxMileage],
+    ] as const;
+    for (const [key, min, max] of ranges) {
+      if (min === undefined && max === undefined) continue;
+      const field = rangeFields[key];
+      if (!field)
+        throw new BadRequestException(
+          `Filtering by ${key} is unsupported by this inventory mapping.`,
+        );
+      const comparable = (value: string | number) => {
+        const [whole, fraction = ''] = String(value).split('.');
+        return BigInt(whole + fraction.padEnd(2, '0'));
+      };
+      if (min !== undefined && max !== undefined && comparable(min) > comparable(max)) {
+        throw new BadRequestException(`Minimum ${key} must not exceed maximum ${key}.`);
+      }
+      const parameter = key === 'price' ? 'CAST(? AS DECIMAL(34,2))' : '?';
+      if (min !== undefined) {
+        conditions.push(`${quoteSqlIdentifier(field)} >= ${parameter}`);
+        values.push(min);
+      }
+      if (max !== undefined) {
+        conditions.push(`${quoteSqlIdentifier(field)} <= ${parameter}`);
+        values.push(max);
+      }
     }
-    const order = sortMap[filters.sort ?? 'newest'];
+
+    const sortFields: Record<VehicleSort, readonly [string | null, 'ASC' | 'DESC']> = {
+      newest: [mapping.yearField ?? mapping.primaryKeyField, 'DESC'],
+      priceAsc: [mapping.priceField, 'ASC'],
+      priceDesc: [mapping.priceField, 'DESC'],
+      yearAsc: [mapping.yearField, 'ASC'],
+      yearDesc: [mapping.yearField, 'DESC'],
+      mileageAsc: [mapping.mileageField, 'ASC'],
+      mileageDesc: [mapping.mileageField, 'DESC'],
+      makeAsc: [mapping.makeField, 'ASC'],
+      makeDesc: [mapping.makeField, 'DESC'],
+    };
+    const [sortField, direction] = sortFields[filters.sort ?? 'newest'];
+    if (!sortField)
+      throw new BadRequestException('The requested sort is unsupported by this inventory mapping.');
+    const primaryKey = quoteSqlIdentifier(mapping.primaryKeyField);
+    const sortColumn = quoteSqlIdentifier(sortField);
+    const order =
+      sortColumn === primaryKey
+        ? `${primaryKey} ${direction}`
+        : `${sortColumn} IS NULL ASC, ${sortColumn} ${direction}, ${primaryKey} DESC`;
+
+    const where = conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '';
     const columns = this.mappingSelectColumns(mapping);
-    const offset = (filters.page - 1) * filters.pageSize;
-    const rows = await connector.query(
-      `SELECT ${columns.join(', ')} FROM ${table}${where} ORDER BY ${order}, ${quoteSqlIdentifier(mapping.primaryKeyField)} DESC LIMIT ? OFFSET ?`,
-      [...values, filters.pageSize, offset],
-    );
     return {
-      items: rows.map((row) => this.normalizeVehicle(connection, mapping, row)),
-      total,
-      page: filters.page,
-      pageSize: filters.pageSize,
+      countSql: `SELECT COUNT(*) AS total FROM ${table}${where}`,
+      listSql: `SELECT ${columns.join(', ')} FROM ${table}${where} ORDER BY ${order} LIMIT ? OFFSET ?`,
+      values,
+      supportedFilters,
     };
   }
 
@@ -608,6 +710,7 @@ export class InventoryService {
     username: string;
     status: string;
     tlsEnabled: boolean;
+    tlsServername: string | null;
     lastTestedAt: Date | null;
     lastSuccessfulConnectionAt: Date | null;
     mapping: unknown;
@@ -625,6 +728,7 @@ export class InventoryService {
       username: connection.username,
       status: connection.status as InventoryConnectionSummary['status'],
       tlsEnabled: connection.tlsEnabled,
+      tlsServername: connection.tlsServername,
       lastTestedAt: connection.lastTestedAt?.toISOString() ?? null,
       lastSuccessfulConnectionAt: connection.lastSuccessfulConnectionAt?.toISOString() ?? null,
       mapping: connection.mapping as InventoryMappingConfiguration | null,
@@ -680,4 +784,8 @@ function toNullableBoolean(value: unknown): boolean | null {
     if (['0', 'false', 'no', 'unavailable'].includes(normalized)) return false;
   }
   return null;
+}
+
+function inventoryPattern(value: string): string {
+  return `%${value.replace(/[!%_]/g, '!$&')}%`;
 }

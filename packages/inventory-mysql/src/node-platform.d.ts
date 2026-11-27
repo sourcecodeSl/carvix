@@ -14,6 +14,12 @@ declare module 'node:net' {
   export function connect(options: { host: string; port: number; family: 4 | 6 }): {
     setNoDelay(noDelay?: boolean): void;
     on(event: 'connect', listener: () => void): void;
+    on(event: 'close', listener: () => void): void;
+    destroy(error?: Error): void;
     setKeepAlive(enable?: boolean): void;
   };
+}
+
+declare module 'node:url' {
+  export function domainToASCII(domain: string): string;
 }

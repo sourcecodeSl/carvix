@@ -1618,6 +1618,7 @@ export const InventoryConnectionScalarFieldEnum = {
   credentialReference: 'credentialReference',
   status: 'status',
   tlsEnabled: 'tlsEnabled',
+  tlsServername: 'tlsServername',
   connectTimeoutMs: 'connectTimeoutMs',
   queryTimeoutMs: 'queryTimeoutMs',
   lastTestedAt: 'lastTestedAt',

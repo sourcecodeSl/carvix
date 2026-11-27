@@ -336,6 +336,7 @@ export type InventoryConnectionSummary = {
   username: string;
   status: InventoryConnectionStatus;
   tlsEnabled: boolean;
+  tlsServername: string | null;
   lastTestedAt: string | null;
   lastSuccessfulConnectionAt: string | null;
   mapping: InventoryMappingConfiguration | null;
@@ -378,6 +379,29 @@ export type VehicleDetails = VehicleSummary & {
   source: 'EXTERNAL_MYSQL';
 };
 
+export const vehicleSortOptions = [
+  'newest',
+  'priceAsc',
+  'priceDesc',
+  'yearAsc',
+  'yearDesc',
+  'mileageAsc',
+  'mileageDesc',
+  'makeAsc',
+  'makeDesc',
+] as const;
+
+export type VehicleSort = (typeof vehicleSortOptions)[number];
+export type VehicleFilterCapability =
+  | 'price'
+  | 'year'
+  | 'mileage'
+  | 'fuelType'
+  | 'transmission'
+  | 'availability'
+  | 'condition'
+  | 'bodyType';
+
 export type VehicleSearchFilters = {
   q?: string;
   make?: string;
@@ -389,12 +413,18 @@ export type VehicleSearchFilters = {
   fuelType?: string;
   transmission?: string;
   availability?: string;
-  sort?: 'newest' | 'priceAsc' | 'priceDesc' | 'yearDesc';
+  minMileage?: number;
+  maxMileage?: number;
+  condition?: string;
+  bodyType?: string;
+  sort?: VehicleSort;
   page?: number;
   pageSize?: number;
 };
 
 export type VehicleSearchResult = {
+  totalPages: number;
+  supportedFilters: readonly VehicleFilterCapability[];
   items: readonly VehicleSummary[];
   total: number;
   page: number;

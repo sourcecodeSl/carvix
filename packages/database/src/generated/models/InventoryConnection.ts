@@ -58,6 +58,7 @@ export type InventoryConnectionMinAggregateOutputType = {
   credentialReference: string | null
   status: $Enums.InventoryConnectionStatus | null
   tlsEnabled: boolean | null
+  tlsServername: string | null
   connectTimeoutMs: number | null
   queryTimeoutMs: number | null
   lastTestedAt: Date | null
@@ -84,6 +85,7 @@ export type InventoryConnectionMaxAggregateOutputType = {
   credentialReference: string | null
   status: $Enums.InventoryConnectionStatus | null
   tlsEnabled: boolean | null
+  tlsServername: string | null
   connectTimeoutMs: number | null
   queryTimeoutMs: number | null
   lastTestedAt: Date | null
@@ -110,6 +112,7 @@ export type InventoryConnectionCountAggregateOutputType = {
   credentialReference: number
   status: number
   tlsEnabled: number
+  tlsServername: number
   connectTimeoutMs: number
   queryTimeoutMs: number
   lastTestedAt: number
@@ -155,6 +158,7 @@ export type InventoryConnectionMinAggregateInputType = {
   credentialReference?: true
   status?: true
   tlsEnabled?: true
+  tlsServername?: true
   connectTimeoutMs?: true
   queryTimeoutMs?: true
   lastTestedAt?: true
@@ -181,6 +185,7 @@ export type InventoryConnectionMaxAggregateInputType = {
   credentialReference?: true
   status?: true
   tlsEnabled?: true
+  tlsServername?: true
   connectTimeoutMs?: true
   queryTimeoutMs?: true
   lastTestedAt?: true
@@ -207,6 +212,7 @@ export type InventoryConnectionCountAggregateInputType = {
   credentialReference?: true
   status?: true
   tlsEnabled?: true
+  tlsServername?: true
   connectTimeoutMs?: true
   queryTimeoutMs?: true
   lastTestedAt?: true
@@ -321,6 +327,7 @@ export type InventoryConnectionGroupByOutputType = {
   credentialReference: string
   status: $Enums.InventoryConnectionStatus
   tlsEnabled: boolean
+  tlsServername: string | null
   connectTimeoutMs: number
   queryTimeoutMs: number
   lastTestedAt: Date | null
@@ -371,6 +378,7 @@ export type InventoryConnectionWhereInput = {
   credentialReference?: Prisma.StringFilter<"InventoryConnection"> | string
   status?: Prisma.EnumInventoryConnectionStatusFilter<"InventoryConnection"> | $Enums.InventoryConnectionStatus
   tlsEnabled?: Prisma.BoolFilter<"InventoryConnection"> | boolean
+  tlsServername?: Prisma.StringNullableFilter<"InventoryConnection"> | string | null
   connectTimeoutMs?: Prisma.IntFilter<"InventoryConnection"> | number
   queryTimeoutMs?: Prisma.IntFilter<"InventoryConnection"> | number
   lastTestedAt?: Prisma.DateTimeNullableFilter<"InventoryConnection"> | Date | string | null
@@ -400,6 +408,7 @@ export type InventoryConnectionOrderByWithRelationInput = {
   credentialReference?: Prisma.SortOrder
   status?: Prisma.SortOrder
   tlsEnabled?: Prisma.SortOrder
+  tlsServername?: Prisma.SortOrderInput | Prisma.SortOrder
   connectTimeoutMs?: Prisma.SortOrder
   queryTimeoutMs?: Prisma.SortOrder
   lastTestedAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -433,6 +442,7 @@ export type InventoryConnectionWhereUniqueInput = Prisma.AtLeast<{
   credentialReference?: Prisma.StringFilter<"InventoryConnection"> | string
   status?: Prisma.EnumInventoryConnectionStatusFilter<"InventoryConnection"> | $Enums.InventoryConnectionStatus
   tlsEnabled?: Prisma.BoolFilter<"InventoryConnection"> | boolean
+  tlsServername?: Prisma.StringNullableFilter<"InventoryConnection"> | string | null
   connectTimeoutMs?: Prisma.IntFilter<"InventoryConnection"> | number
   queryTimeoutMs?: Prisma.IntFilter<"InventoryConnection"> | number
   lastTestedAt?: Prisma.DateTimeNullableFilter<"InventoryConnection"> | Date | string | null
@@ -462,6 +472,7 @@ export type InventoryConnectionOrderByWithAggregationInput = {
   credentialReference?: Prisma.SortOrder
   status?: Prisma.SortOrder
   tlsEnabled?: Prisma.SortOrder
+  tlsServername?: Prisma.SortOrderInput | Prisma.SortOrder
   connectTimeoutMs?: Prisma.SortOrder
   queryTimeoutMs?: Prisma.SortOrder
   lastTestedAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -497,6 +508,7 @@ export type InventoryConnectionScalarWhereWithAggregatesInput = {
   credentialReference?: Prisma.StringWithAggregatesFilter<"InventoryConnection"> | string
   status?: Prisma.EnumInventoryConnectionStatusWithAggregatesFilter<"InventoryConnection"> | $Enums.InventoryConnectionStatus
   tlsEnabled?: Prisma.BoolWithAggregatesFilter<"InventoryConnection"> | boolean
+  tlsServername?: Prisma.StringNullableWithAggregatesFilter<"InventoryConnection"> | string | null
   connectTimeoutMs?: Prisma.IntWithAggregatesFilter<"InventoryConnection"> | number
   queryTimeoutMs?: Prisma.IntWithAggregatesFilter<"InventoryConnection"> | number
   lastTestedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"InventoryConnection"> | Date | string | null
@@ -522,6 +534,7 @@ export type InventoryConnectionCreateInput = {
   credentialReference: string
   status?: $Enums.InventoryConnectionStatus
   tlsEnabled?: boolean
+  tlsServername?: string | null
   connectTimeoutMs?: number
   queryTimeoutMs?: number
   lastTestedAt?: Date | string | null
@@ -551,6 +564,7 @@ export type InventoryConnectionUncheckedCreateInput = {
   credentialReference: string
   status?: $Enums.InventoryConnectionStatus
   tlsEnabled?: boolean
+  tlsServername?: string | null
   connectTimeoutMs?: number
   queryTimeoutMs?: number
   lastTestedAt?: Date | string | null
@@ -576,6 +590,7 @@ export type InventoryConnectionUpdateInput = {
   credentialReference?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumInventoryConnectionStatusFieldUpdateOperationsInput | $Enums.InventoryConnectionStatus
   tlsEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  tlsServername?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   connectTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   queryTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   lastTestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -605,6 +620,7 @@ export type InventoryConnectionUncheckedUpdateInput = {
   credentialReference?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumInventoryConnectionStatusFieldUpdateOperationsInput | $Enums.InventoryConnectionStatus
   tlsEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  tlsServername?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   connectTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   queryTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   lastTestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -632,6 +648,7 @@ export type InventoryConnectionCreateManyInput = {
   credentialReference: string
   status?: $Enums.InventoryConnectionStatus
   tlsEnabled?: boolean
+  tlsServername?: string | null
   connectTimeoutMs?: number
   queryTimeoutMs?: number
   lastTestedAt?: Date | string | null
@@ -657,6 +674,7 @@ export type InventoryConnectionUpdateManyMutationInput = {
   credentialReference?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumInventoryConnectionStatusFieldUpdateOperationsInput | $Enums.InventoryConnectionStatus
   tlsEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  tlsServername?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   connectTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   queryTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   lastTestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -684,6 +702,7 @@ export type InventoryConnectionUncheckedUpdateManyInput = {
   credentialReference?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumInventoryConnectionStatusFieldUpdateOperationsInput | $Enums.InventoryConnectionStatus
   tlsEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  tlsServername?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   connectTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   queryTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   lastTestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -726,6 +745,7 @@ export type InventoryConnectionCountOrderByAggregateInput = {
   credentialReference?: Prisma.SortOrder
   status?: Prisma.SortOrder
   tlsEnabled?: Prisma.SortOrder
+  tlsServername?: Prisma.SortOrder
   connectTimeoutMs?: Prisma.SortOrder
   queryTimeoutMs?: Prisma.SortOrder
   lastTestedAt?: Prisma.SortOrder
@@ -761,6 +781,7 @@ export type InventoryConnectionMaxOrderByAggregateInput = {
   credentialReference?: Prisma.SortOrder
   status?: Prisma.SortOrder
   tlsEnabled?: Prisma.SortOrder
+  tlsServername?: Prisma.SortOrder
   connectTimeoutMs?: Prisma.SortOrder
   queryTimeoutMs?: Prisma.SortOrder
   lastTestedAt?: Prisma.SortOrder
@@ -787,6 +808,7 @@ export type InventoryConnectionMinOrderByAggregateInput = {
   credentialReference?: Prisma.SortOrder
   status?: Prisma.SortOrder
   tlsEnabled?: Prisma.SortOrder
+  tlsServername?: Prisma.SortOrder
   connectTimeoutMs?: Prisma.SortOrder
   queryTimeoutMs?: Prisma.SortOrder
   lastTestedAt?: Prisma.SortOrder
@@ -923,6 +945,7 @@ export type InventoryConnectionCreateWithoutTenantInput = {
   credentialReference: string
   status?: $Enums.InventoryConnectionStatus
   tlsEnabled?: boolean
+  tlsServername?: string | null
   connectTimeoutMs?: number
   queryTimeoutMs?: number
   lastTestedAt?: Date | string | null
@@ -950,6 +973,7 @@ export type InventoryConnectionUncheckedCreateWithoutTenantInput = {
   credentialReference: string
   status?: $Enums.InventoryConnectionStatus
   tlsEnabled?: boolean
+  tlsServername?: string | null
   connectTimeoutMs?: number
   queryTimeoutMs?: number
   lastTestedAt?: Date | string | null
@@ -1006,6 +1030,7 @@ export type InventoryConnectionScalarWhereInput = {
   credentialReference?: Prisma.StringFilter<"InventoryConnection"> | string
   status?: Prisma.EnumInventoryConnectionStatusFilter<"InventoryConnection"> | $Enums.InventoryConnectionStatus
   tlsEnabled?: Prisma.BoolFilter<"InventoryConnection"> | boolean
+  tlsServername?: Prisma.StringNullableFilter<"InventoryConnection"> | string | null
   connectTimeoutMs?: Prisma.IntFilter<"InventoryConnection"> | number
   queryTimeoutMs?: Prisma.IntFilter<"InventoryConnection"> | number
   lastTestedAt?: Prisma.DateTimeNullableFilter<"InventoryConnection"> | Date | string | null
@@ -1031,6 +1056,7 @@ export type InventoryConnectionCreateWithoutDealershipInput = {
   credentialReference: string
   status?: $Enums.InventoryConnectionStatus
   tlsEnabled?: boolean
+  tlsServername?: string | null
   connectTimeoutMs?: number
   queryTimeoutMs?: number
   lastTestedAt?: Date | string | null
@@ -1057,6 +1083,7 @@ export type InventoryConnectionUncheckedCreateWithoutDealershipInput = {
   credentialReference: string
   status?: $Enums.InventoryConnectionStatus
   tlsEnabled?: boolean
+  tlsServername?: string | null
   connectTimeoutMs?: number
   queryTimeoutMs?: number
   lastTestedAt?: Date | string | null
@@ -1109,6 +1136,7 @@ export type InventoryConnectionCreateManyTenantInput = {
   credentialReference: string
   status?: $Enums.InventoryConnectionStatus
   tlsEnabled?: boolean
+  tlsServername?: string | null
   connectTimeoutMs?: number
   queryTimeoutMs?: number
   lastTestedAt?: Date | string | null
@@ -1134,6 +1162,7 @@ export type InventoryConnectionUpdateWithoutTenantInput = {
   credentialReference?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumInventoryConnectionStatusFieldUpdateOperationsInput | $Enums.InventoryConnectionStatus
   tlsEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  tlsServername?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   connectTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   queryTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   lastTestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1161,6 +1190,7 @@ export type InventoryConnectionUncheckedUpdateWithoutTenantInput = {
   credentialReference?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumInventoryConnectionStatusFieldUpdateOperationsInput | $Enums.InventoryConnectionStatus
   tlsEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  tlsServername?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   connectTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   queryTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   lastTestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1187,6 +1217,7 @@ export type InventoryConnectionUncheckedUpdateManyWithoutTenantInput = {
   credentialReference?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumInventoryConnectionStatusFieldUpdateOperationsInput | $Enums.InventoryConnectionStatus
   tlsEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  tlsServername?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   connectTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   queryTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   lastTestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1212,6 +1243,7 @@ export type InventoryConnectionCreateManyDealershipInput = {
   credentialReference: string
   status?: $Enums.InventoryConnectionStatus
   tlsEnabled?: boolean
+  tlsServername?: string | null
   connectTimeoutMs?: number
   queryTimeoutMs?: number
   lastTestedAt?: Date | string | null
@@ -1237,6 +1269,7 @@ export type InventoryConnectionUpdateWithoutDealershipInput = {
   credentialReference?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumInventoryConnectionStatusFieldUpdateOperationsInput | $Enums.InventoryConnectionStatus
   tlsEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  tlsServername?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   connectTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   queryTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   lastTestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1263,6 +1296,7 @@ export type InventoryConnectionUncheckedUpdateWithoutDealershipInput = {
   credentialReference?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumInventoryConnectionStatusFieldUpdateOperationsInput | $Enums.InventoryConnectionStatus
   tlsEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  tlsServername?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   connectTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   queryTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   lastTestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1288,6 +1322,7 @@ export type InventoryConnectionUncheckedUpdateManyWithoutDealershipInput = {
   credentialReference?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.EnumInventoryConnectionStatusFieldUpdateOperationsInput | $Enums.InventoryConnectionStatus
   tlsEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  tlsServername?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   connectTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   queryTimeoutMs?: Prisma.IntFieldUpdateOperationsInput | number
   lastTestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1317,6 +1352,7 @@ export type InventoryConnectionSelect<ExtArgs extends runtime.Types.Extensions.I
   credentialReference?: boolean
   status?: boolean
   tlsEnabled?: boolean
+  tlsServername?: boolean
   connectTimeoutMs?: boolean
   queryTimeoutMs?: boolean
   lastTestedAt?: boolean
@@ -1346,6 +1382,7 @@ export type InventoryConnectionSelectCreateManyAndReturn<ExtArgs extends runtime
   credentialReference?: boolean
   status?: boolean
   tlsEnabled?: boolean
+  tlsServername?: boolean
   connectTimeoutMs?: boolean
   queryTimeoutMs?: boolean
   lastTestedAt?: boolean
@@ -1375,6 +1412,7 @@ export type InventoryConnectionSelectUpdateManyAndReturn<ExtArgs extends runtime
   credentialReference?: boolean
   status?: boolean
   tlsEnabled?: boolean
+  tlsServername?: boolean
   connectTimeoutMs?: boolean
   queryTimeoutMs?: boolean
   lastTestedAt?: boolean
@@ -1404,6 +1442,7 @@ export type InventoryConnectionSelectScalar = {
   credentialReference?: boolean
   status?: boolean
   tlsEnabled?: boolean
+  tlsServername?: boolean
   connectTimeoutMs?: boolean
   queryTimeoutMs?: boolean
   lastTestedAt?: boolean
@@ -1415,7 +1454,7 @@ export type InventoryConnectionSelectScalar = {
   updatedAt?: boolean
 }
 
-export type InventoryConnectionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "dealershipId" | "name" | "connectorType" | "host" | "port" | "databaseName" | "username" | "credentialCiphertext" | "credentialIv" | "credentialTag" | "credentialReference" | "status" | "tlsEnabled" | "connectTimeoutMs" | "queryTimeoutMs" | "lastTestedAt" | "lastSuccessfulConnectionAt" | "configurationRevision" | "lastTestedRevision" | "mapping" | "createdAt" | "updatedAt", ExtArgs["result"]["inventoryConnection"]>
+export type InventoryConnectionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "dealershipId" | "name" | "connectorType" | "host" | "port" | "databaseName" | "username" | "credentialCiphertext" | "credentialIv" | "credentialTag" | "credentialReference" | "status" | "tlsEnabled" | "tlsServername" | "connectTimeoutMs" | "queryTimeoutMs" | "lastTestedAt" | "lastSuccessfulConnectionAt" | "configurationRevision" | "lastTestedRevision" | "mapping" | "createdAt" | "updatedAt", ExtArgs["result"]["inventoryConnection"]>
 export type InventoryConnectionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
   dealership?: boolean | Prisma.DealershipDefaultArgs<ExtArgs>
@@ -1451,6 +1490,7 @@ export type $InventoryConnectionPayload<ExtArgs extends runtime.Types.Extensions
     credentialReference: string
     status: $Enums.InventoryConnectionStatus
     tlsEnabled: boolean
+    tlsServername: string | null
     connectTimeoutMs: number
     queryTimeoutMs: number
     lastTestedAt: Date | null
@@ -1900,6 +1940,7 @@ export interface InventoryConnectionFieldRefs {
   readonly credentialReference: Prisma.FieldRef<"InventoryConnection", 'String'>
   readonly status: Prisma.FieldRef<"InventoryConnection", 'InventoryConnectionStatus'>
   readonly tlsEnabled: Prisma.FieldRef<"InventoryConnection", 'Boolean'>
+  readonly tlsServername: Prisma.FieldRef<"InventoryConnection", 'String'>
   readonly connectTimeoutMs: Prisma.FieldRef<"InventoryConnection", 'Int'>
   readonly queryTimeoutMs: Prisma.FieldRef<"InventoryConnection", 'Int'>
   readonly lastTestedAt: Prisma.FieldRef<"InventoryConnection", 'DateTime'>

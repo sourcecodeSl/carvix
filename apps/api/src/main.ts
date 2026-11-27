@@ -40,7 +40,9 @@ async function bootstrap(): Promise<void> {
 
   app.enableShutdownHooks();
   const port = config.getOrThrow<number>('API_PORT');
-  await app.listen(port);
+  const bindHost = config.get<string>('API_BIND_HOST');
+  if (bindHost) await app.listen(port, bindHost);
+  else await app.listen(port);
   logger.log(`API listening on http://127.0.0.1:${port}`);
 }
 
